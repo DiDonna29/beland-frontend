@@ -195,30 +195,35 @@ export const CatalogScreen = () => {
               variant="header"
               style={containerStyles.coinsContainer}
             />
-            <TouchableOpacity
-              style={styles.headerCartBtn}
-              onPress={() => setShowCart(true)}
-              activeOpacity={0.8}
-            >
-              <MaterialCommunityIcons
-                name={isSyncing ? "sync" : "cart-variant"}
-                size={32}
-                color={isSyncing ? "#FFA500" : "#FF6B35"}
-                style={[styles.headerCartIcon, isSyncing && styles.syncingIcon]}
-              />
-              {cartProducts.length > 0 && !isSyncing && (
-                <View style={styles.headerBadge}>
-                  <Text style={styles.headerBadgeText}>
-                    {cartProducts.length}
-                  </Text>
-                </View>
-              )}
-              {isSyncing && (
-                <View style={styles.syncIndicator}>
-                  <Text style={styles.syncText}>⟳</Text>
-                </View>
-              )}
-            </TouchableOpacity>
+            {isAuthenticated && (
+              <TouchableOpacity
+                style={styles.headerCartBtn}
+                onPress={() => setShowCart(true)}
+                activeOpacity={0.8}
+              >
+                <MaterialCommunityIcons
+                  name={isSyncing ? "sync" : "cart-variant"}
+                  size={32}
+                  color={isSyncing ? "#FFA500" : "#FF6B35"}
+                  style={[
+                    styles.headerCartIcon,
+                    isSyncing && styles.syncingIcon,
+                  ]}
+                />
+                {cartProducts.length > 0 && !isSyncing && (
+                  <View style={styles.headerBadge}>
+                    <Text style={styles.headerBadgeText}>
+                      {cartProducts.length}
+                    </Text>
+                  </View>
+                )}
+                {isSyncing && (
+                  <View style={styles.syncIndicator}>
+                    <Text style={styles.syncText}>⟳</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </View>
@@ -266,46 +271,56 @@ export const CatalogScreen = () => {
         )}
       </ScrollView>
 
-      <CartBottomSheet
-        visible={showCart}
-        onClose={() => setShowCart(false)}
-        onCheckout={async () => {
-          setShowCart(false);
+      {isAuthenticated && (
+        <CartBottomSheet
+          visible={showCart}
+          onClose={() => setShowCart(false)}
+          onCheckout={async () => {
+            setShowCart(false);
 
-          if (cartProducts.length === 0) {
-            Alert.alert("Carrito vacío", "Agrega productos antes de continuar");
-            return;
-          }
-
-          try {
-            // Mostrar loading si es necesario
-            console.log("🛒 Procesando checkout con productos:", cartProducts);
-
-            // Aquí es donde ahora procesamos el carrito al backend
-            // Pero por ahora, como aún no tienes la pantalla de direcciones,
-            // vamos a usar el modal de delivery existente
-            const firstProduct = cartProducts[0];
-            const fullProduct = products.find((p) => p.id === firstProduct.id);
-
-            if (fullProduct) {
-              openDeliveryModal(fullProduct);
-            } else {
+            if (cartProducts.length === 0) {
               Alert.alert(
-                "Producto no disponible",
-                "El producto seleccionado ya no está disponible en el catálogo.",
+                "Carrito vacío",
+                "Agrega productos antes de continuar"
+              );
+              return;
+            }
+
+            try {
+              // Mostrar loading si es necesario
+              console.log(
+                "🛒 Procesando checkout con productos:",
+                cartProducts
+              );
+
+              // Aquí es donde ahora procesamos el carrito al backend
+              // Pero por ahora, como aún no tienes la pantalla de direcciones,
+              // vamos a usar el modal de delivery existente
+              const firstProduct = cartProducts[0];
+              const fullProduct = products.find(
+                (p) => p.id === firstProduct.id
+              );
+
+              if (fullProduct) {
+                openDeliveryModal(fullProduct);
+              } else {
+                Alert.alert(
+                  "Producto no disponible",
+                  "El producto seleccionado ya no está disponible en el catálogo.",
+                  [{ text: "OK" }]
+                );
+              }
+            } catch (error) {
+              console.error("Error en checkout:", error);
+              Alert.alert(
+                "Error",
+                "Hubo un problema al procesar tu carrito. Inténtalo de nuevo.",
                 [{ text: "OK" }]
               );
             }
-          } catch (error) {
-            console.error("Error en checkout:", error);
-            Alert.alert(
-              "Error",
-              "Hubo un problema al procesar tu carrito. Inténtalo de nuevo.",
-              [{ text: "OK" }]
-            );
-          }
-        }}
-      />
+          }}
+        />
+      )}
 
       <OrderDeliveryModal
         visible={showDeliveryModal}
