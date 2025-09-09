@@ -58,6 +58,10 @@ interface AuthContextType {
   loginWithAuth0: () => void;
   logout: () => void;
   fetchWithAuth: (url: string, options?: RequestInit) => Promise<Response>;
+  // Nuevos helpers para manejar autenticación
+  isAuthenticated: boolean;
+  requireAuth: (action: () => void | Promise<void>) => Promise<void>;
+  canPerformAction: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -235,6 +239,36 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     await deleteToken();
   };
 
+  // === NUEVAS FUNCIONES PARA MANEJAR AUTENTICACIÓN ===
+
+  // Determinar si el usuario está autenticado
+  const isAuthenticated = !!user && !!getToken();
+
+  // Helper para determinar si se puede realizar una acción
+  const canPerformAction = isAuthenticated;
+
+  // Función helper para proteger acciones que requieren autenticación
+  const requireAuth = async (action: () => void | Promise<void>) => {
+    if (!isAuthenticated) {
+      Alert.alert(
+        "Inicio de sesión requerido",
+        "Debes iniciar sesión para realizar esta acción.",
+        [
+          { text: "Cancelar", style: "cancel" },
+          { text: "Iniciar sesión", onPress: loginWithAuth0 },
+        ]
+      );
+      throw new Error("Usuario no autenticado");
+    }
+
+    try {
+      await action();
+    } catch (error) {
+      console.error("Error en acción protegida:", error);
+      throw error;
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -245,6 +279,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         loginWithAuth0,
         logout,
         fetchWithAuth,
+        isAuthenticated,
+        requireAuth,
+        canPerformAction,
       }}
     >
       {children}
