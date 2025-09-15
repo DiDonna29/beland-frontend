@@ -6,7 +6,6 @@ import React, {
   useCallback,
 } from "react";
 import { Platform, Alert, View, Text, StyleSheet } from "react-native";
-import * as WebBrowser from "expo-web-browser";
 import * as SecureStore from "expo-secure-store";
 import {
   makeRedirectUri,
@@ -16,29 +15,16 @@ import {
 } from "expo-auth-session";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
-import { SocketService, RespSocket } from "../services/SocketService";
 import { useAuthTokenStore } from "src/stores/useAuthTokenStore";
-// import AsyncStorage from "@react-native-async-storage/async-storage";
 
-WebBrowser.maybeCompleteAuthSession();
-
-// === CONFIGURACIÓN ===
 const auth0Domain = Constants.expoConfig?.extra?.auth0Domain as string;
 const clientWebId = Constants.expoConfig?.extra?.auth0WebClientId as string;
 const scheme = Constants.expoConfig?.scheme as string;
 const auth0Audience = Constants.expoConfig?.extra?.auth0Audience as string;
 const apiBaseUrl = Constants.expoConfig?.extra?.apiUrl as string;
 
-// Validar que las variables de entorno están disponibles
 const configIsValid = auth0Domain && clientWebId && scheme && auth0Audience;
 
-if (!configIsValid) {
-  console.error(
-    "❌ Las variables de entorno de Auth0 no están configuradas correctamente."
-  );
-}
-
-// === TIPADO ===
 export interface AuthUser {
   id: string;
   email: string;
@@ -58,7 +44,6 @@ interface AuthContextType {
   loginWithAuth0: () => void;
   logout: () => void;
   fetchWithAuth: (url: string, options?: RequestInit) => Promise<Response>;
-  // Nuevos helpers para manejar autenticación
   isAuthenticated: boolean;
   requireAuth: (action: () => void | Promise<void>) => Promise<void>;
   canPerformAction: boolean;
@@ -66,7 +51,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// === Almacenamiento híbrido de token y usuario ===
 const saveToken = async (token: string) => {
   if (Platform.OS === "web") {
     localStorage.setItem("auth_token", token);
@@ -91,75 +75,17 @@ const deleteToken = async () => {
   }
 };
 
-// Función para limpiar todos los datos del localStorage al hacer logout
-const clearAllLocalStorage = async () => {
-  try {
-    if (Platform.OS === "web") {
-      // Limpiar datos específicos de la aplicación
-      const keysToRemove = [
-        "auth_token",
-        "auth_user",
-        "cart-store",
-        "becoins-store",
-        "orders-store-api",
-        "group-store",
-        "orders-store",
-        "create-group-store",
-        // Agregar cualquier otra clave que la app use en localStorage
-      ];
-
-      keysToRemove.forEach((key) => {
-        localStorage.removeItem(key);
-      });
-
-      console.log("🧹 LocalStorage limpiado en web");
-    } else {
-      // Para mobile, limpiar AsyncStorage
-      const keysToRemove = [
-        "auth_token",
-        "auth_user",
-        "cart-store",
-        "becoins-store",
-        "orders-store-api",
-        "group-store",
-        "orders-store",
-        "create-group-store",
-      ];
-
-      for (const key of keysToRemove) {
-        try {
-          await AsyncStorage.removeItem(key);
-        } catch (error) {
-          console.warn(`Error eliminando ${key} de AsyncStorage:`, error);
-        }
-      }
-
-      console.log("🧹 AsyncStorage limpiado en mobile");
-    }
-  } catch (error) {
-    console.error("❌ Error limpiando almacenamiento local:", error);
-  }
-};
-
-// === PROVEEDOR ===
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  // --- Socket.io integration (puedes re-agregarlo luego si lo necesitas) ---
-  // const socketService = React.useRef<SocketService | null>(null);
-  // const [socketData, setSocketData] = useState<RespSocket | null>(null);
-
   const user = useAuthTokenStore((state) => state.user);
   const setUser = useAuthTokenStore((state) => state.setUser);
   const clearUser = useAuthTokenStore((state) => state.clearUser);
   const [isLoading, setIsLoading] = useState(true);
 
-  // useEffect para socket y balance eliminado
-
   if (!configIsValid) {
     return (
       <View style={styles.container}>
         <Text style={styles.errorText}>
-          Error de configuración: Falta alguna variable de entorno de Auth0. Por
-          favor, revisa tus archivos .env y app.config.js.
+          Error de configuración: Falta alguna variable de entorno de Auth0.
         </Text>
       </View>
     );
@@ -178,7 +104,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       usePKCE: true,
       extraParams: {
         audience: auth0Audience,
-        prompt: "login", // Fuerza a que Auth0 muestre la pantalla de login
+        prompt: "login",
       },
     },
     discovery
@@ -187,53 +113,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const fetchWithAuth = useCallback(
     async (url: string, options: RequestInit = {}) => {
       const token = await getToken();
-      if (!token) {
-        throw new Error("No hay token de autenticación.");
-      }
+      if (!token) throw new Error("No hay token de autenticación.");
 
       const headers = {
         ...options.headers,
         Authorization: `Bearer ${token}`,
       };
 
-      return fetch(url, {
-        ...options,
-        headers,
-      });
+      return fetch(url, { ...options, headers });
     },
     []
   );
 
   const getProfile = useCallback(async () => {
-    try {
-      const response = await fetchWithAuth(`${apiBaseUrl}/auth/me`);
-      if (!response.ok) {
-        throw new Error(`Error al obtener perfil: ${response.statusText}`);
-      }
-      const data = await response.json();
-      const userObj = {
-        ...data,
-        picture: data.profile_picture_url,
-      };
-      setUser(userObj);
-      console.log("✅ Perfil de usuario obtenido exitosamente.");
-    } catch (error) {
-      console.error("❌ Error obteniendo perfil del usuario:", error);
-      clearUser();
-      await deleteToken();
-      throw error;
-    }
+    const response = await fetchWithAuth(`${apiBaseUrl}/auth/me`);
+    if (!response.ok) throw new Error(`Error al obtener perfil`);
+    const data = await response.json();
+    setUser({ ...data, picture: data.profile_picture_url });
   }, [apiBaseUrl, fetchWithAuth]);
 
-  // Se ha consolidado toda la lógica de inicialización en un solo useEffect.
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        // Restaurar sesión híbrida solo una vez al montar
         const token = await getToken();
         if (!token) clearUser();
 
-        // Procesar redireccionamiento de Auth0 solo si hay response
         if (response && response.type === "success" && discovery) {
           const { code } = response.params;
           if (code) {
@@ -248,85 +152,72 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     default: "callback",
                   }),
                 }),
-                extraParams: {
-                  code_verifier: request?.codeVerifier || "",
-                },
+                extraParams: { code_verifier: request?.codeVerifier || "" },
               },
               discovery
             );
             if (tokenResponse.accessToken) {
               await saveToken(tokenResponse.accessToken);
               await getProfile();
-            } else {
-              throw new Error("accessToken no fue recibido.");
             }
           }
         }
       } catch (err) {
         clearUser();
         await deleteToken();
-        Alert.alert(
-          "Error de autenticación",
-          "Fallo al iniciar sesión. Por favor, inténtelo de nuevo."
-        );
+        Alert.alert("Error", "Fallo al iniciar sesión. Intente de nuevo.");
       } finally {
         setIsLoading(false);
       }
     };
     initializeAuth();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [response]);
 
+  // 🔑 Modificación principal
   const loginWithAuth0 = () => {
-    // Es importante establecer isLoading en true antes de iniciar el flujo
-    // para que la interfaz de usuario muestre el estado de carga.
     setIsLoading(true);
-    promptAsync();
+
+    if (Platform.OS === "web") {
+      const authorizeUrl =
+        `${discovery?.authorizationEndpoint}?` +
+        new URLSearchParams({
+          client_id: clientWebId,
+          redirect_uri: makeRedirectUri({ scheme: scheme, path: undefined }),
+          response_type: "code",
+          scope: "openid profile email offline_access",
+          audience: auth0Audience,
+          prompt: "login",
+          code_challenge: request?.codeChallenge || "",
+          code_challenge_method: "S256",
+        }).toString();
+
+      // 👉 Redirección en la misma pestaña
+      window.location.href = authorizeUrl;
+    } else {
+      // 👉 En mobile sigue el flujo normal
+      promptAsync();
+    }
   };
 
   const logout = async () => {
-    try {
-      // Limpiar estado de autenticación
-      clearUser();
-      await deleteToken();
-
-      // Limpiar todos los datos del localStorage
-      await clearAllLocalStorage();
-
-      console.log("✅ Logout completado - Todos los datos han sido eliminados");
-    } catch (error) {
-      console.error("❌ Error durante el logout:", error);
+    clearUser();
+    await deleteToken();
+    if (Platform.OS === "web") {
+      localStorage.clear();
+    } else {
+      await AsyncStorage.clear();
     }
   };
 
-  // === NUEVAS FUNCIONES PARA MANEJAR AUTENTICACIÓN ===
-
-  // Determinar si el usuario está autenticado
   const isAuthenticated = !!user && !!getToken();
-
-  // Helper para determinar si se puede realizar una acción
   const canPerformAction = isAuthenticated;
 
-  // Función helper para proteger acciones que requieren autenticación
   const requireAuth = async (action: () => void | Promise<void>) => {
     if (!isAuthenticated) {
-      Alert.alert(
-        "Inicio de sesión requerido",
-        "Debes iniciar sesión para realizar esta acción.",
-        [
-          { text: "Cancelar", style: "cancel" },
-          { text: "Iniciar sesión", onPress: loginWithAuth0 },
-        ]
-      );
+      Alert.alert("Inicio requerido", "Debes iniciar sesión para continuar.");
       throw new Error("Usuario no autenticado");
     }
-
-    try {
-      await action();
-    } catch (error) {
-      console.error("Error en acción protegida:", error);
-      throw error;
-    }
+    await action();
   };
 
   return (
@@ -350,22 +241,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-  },
-  errorText: {
-    color: "red",
-    textAlign: "center",
-  },
+  container: { flex: 1, justifyContent: "center", alignItems: "center" },
+  errorText: { color: "red", textAlign: "center" },
 });
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error("useAuth debe ser usado dentro de un AuthProvider");
+  if (!context) {
+    throw new Error("useAuth debe ser usado dentro de AuthProvider");
   }
   return context;
 };
