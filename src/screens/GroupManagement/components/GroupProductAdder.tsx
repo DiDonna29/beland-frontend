@@ -9,7 +9,7 @@ import {
   ScrollView,
   FlatList,
   TextInput,
-  TouchableWithoutFeedback,
+  Pressable,
 } from "react-native";
 import { AVAILABLE_PRODUCTS, AvailableProduct } from "../../../data/products";
 import { useGroupAdminStore } from "../../../stores/groupStores";
@@ -126,10 +126,7 @@ export const GroupProductAdder: React.FC<GroupProductAdderProps> = ({
               contentContainerStyle={{ paddingBottom: 6 }}
             >
               {categories.map((cat) => (
-                <TouchableWithoutFeedback
-                  key={cat}
-                  onPress={() => setSelectedCategory(cat)}
-                >
+                <Pressable key={cat} onPress={() => setSelectedCategory(cat)}>
                   <View
                     style={[
                       styles.categoryBtn,
@@ -146,7 +143,7 @@ export const GroupProductAdder: React.FC<GroupProductAdderProps> = ({
                       {cat}
                     </Text>
                   </View>
-                </TouchableWithoutFeedback>
+                </Pressable>
               ))}
             </ScrollView>
             {/* FlatList agrupada por categoría */}

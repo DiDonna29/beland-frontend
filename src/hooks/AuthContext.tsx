@@ -105,6 +105,7 @@ const clearAllLocalStorage = async () => {
         "group-store",
         "orders-store",
         "create-group-store",
+        "wallet_id",
         // Agregar cualquier otra clave que la app use en localStorage
       ];
 
