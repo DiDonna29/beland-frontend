@@ -374,9 +374,43 @@ export const useOrdersStoreAPI = create<OrdersStore>((set, get) => ({
     });
   },
 
-  // Get order by ID
+  // Get order by ID (normalized for UI)
   getOrderById: (orderId: string) => {
-    return get().orders.find((order) => order.id === orderId);
+    const raw = get().orders.find((order) => order.id === orderId);
+    if (!raw) return undefined;
+
+    // Normalize items without mutating stored order
+    const normalizedItems = (raw.items || []).map((it: any) => {
+      // Map backend fields to UI fields
+      const price =
+        it.price !== undefined
+          ? it.price
+          : it.unit_price !== undefined
+          ? parseFloat(String(it.unit_price))
+          : undefined;
+
+      const subtotal =
+        it.subtotal !== undefined
+          ? it.subtotal
+          : it.total_price !== undefined
+          ? parseFloat(String(it.total_price))
+          : undefined;
+
+      // Preserve other fields, but prefer 'name'/'image' if present
+      return {
+        ...it,
+        price,
+        subtotal,
+        // back-compat: ensure quantity exists
+        quantity: it.quantity ?? 1,
+      };
+    });
+
+    // Return a shallow copy of order with normalized items
+    return {
+      ...raw,
+      items: normalizedItems,
+    } as any;
   },
 
   // Cancel order

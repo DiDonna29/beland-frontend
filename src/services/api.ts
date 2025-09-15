@@ -27,7 +27,16 @@ async function getAuthToken() {
 
 // Función auxiliar para hacer requests
 const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
-  const url = `${API_BASE_URL}${endpoint}`;
+  // Si se pasa una URL absoluta, usarla tal cual
+  let url: string;
+  if (/^https?:\/\//i.test(endpoint)) {
+    url = endpoint;
+  } else {
+    // Normalizar base y endpoint para evitar concatenaciones como '/apiproducts'
+    const base = String(API_BASE_URL).replace(/\/+$/g, "");
+    const path = String(endpoint).replace(/^\/+/, "");
+    url = `${base}/${path}`;
+  }
 
   // Obtener token de localStorage o AsyncStorage
   const token = await getAuthToken();
