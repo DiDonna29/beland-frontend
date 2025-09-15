@@ -58,6 +58,10 @@ interface AuthContextType {
   loginWithAuth0: () => void;
   logout: () => void;
   fetchWithAuth: (url: string, options?: RequestInit) => Promise<Response>;
+  // Nuevos helpers para manejar autenticación
+  isAuthenticated: boolean;
+  requireAuth: (action: () => void | Promise<void>) => Promise<void>;
+  canPerformAction: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -84,6 +88,57 @@ const deleteToken = async () => {
     localStorage.removeItem("auth_token");
   } else {
     await AsyncStorage.removeItem("auth_token");
+  }
+};
+
+// Función para limpiar todos los datos del localStorage al hacer logout
+const clearAllLocalStorage = async () => {
+  try {
+    if (Platform.OS === "web") {
+      // Limpiar datos específicos de la aplicación
+      const keysToRemove = [
+        "auth_token",
+        "auth_user",
+        "cart-store",
+        "becoins-store",
+        "orders-store-api",
+        "group-store",
+        "orders-store",
+        "create-group-store",
+        "wallet_id",
+        // Agregar cualquier otra clave que la app use en localStorage
+      ];
+
+      keysToRemove.forEach((key) => {
+        localStorage.removeItem(key);
+      });
+
+      console.log("🧹 LocalStorage limpiado en web");
+    } else {
+      // Para mobile, limpiar AsyncStorage
+      const keysToRemove = [
+        "auth_token",
+        "auth_user",
+        "cart-store",
+        "becoins-store",
+        "orders-store-api",
+        "group-store",
+        "orders-store",
+        "create-group-store",
+      ];
+
+      for (const key of keysToRemove) {
+        try {
+          await AsyncStorage.removeItem(key);
+        } catch (error) {
+          console.warn(`Error eliminando ${key} de AsyncStorage:`, error);
+        }
+      }
+
+      console.log("🧹 AsyncStorage limpiado en mobile");
+    }
+  } catch (error) {
+    console.error("❌ Error limpiando almacenamiento local:", error);
   }
 };
 
@@ -231,8 +286,48 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const logout = async () => {
-    clearUser();
-    await deleteToken();
+    try {
+      // Limpiar estado de autenticación
+      clearUser();
+      await deleteToken();
+
+      // Limpiar todos los datos del localStorage
+      await clearAllLocalStorage();
+
+      console.log("✅ Logout completado - Todos los datos han sido eliminados");
+    } catch (error) {
+      console.error("❌ Error durante el logout:", error);
+    }
+  };
+
+  // === NUEVAS FUNCIONES PARA MANEJAR AUTENTICACIÓN ===
+
+  // Determinar si el usuario está autenticado
+  const isAuthenticated = !!user && !!getToken();
+
+  // Helper para determinar si se puede realizar una acción
+  const canPerformAction = isAuthenticated;
+
+  // Función helper para proteger acciones que requieren autenticación
+  const requireAuth = async (action: () => void | Promise<void>) => {
+    if (!isAuthenticated) {
+      Alert.alert(
+        "Inicio de sesión requerido",
+        "Debes iniciar sesión para realizar esta acción.",
+        [
+          { text: "Cancelar", style: "cancel" },
+          { text: "Iniciar sesión", onPress: loginWithAuth0 },
+        ]
+      );
+      throw new Error("Usuario no autenticado");
+    }
+
+    try {
+      await action();
+    } catch (error) {
+      console.error("Error en acción protegida:", error);
+      throw error;
+    }
   };
 
   return (
@@ -245,6 +340,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         loginWithAuth0,
         logout,
         fetchWithAuth,
+        isAuthenticated,
+        requireAuth,
+        canPerformAction,
       }}
     >
       {children}

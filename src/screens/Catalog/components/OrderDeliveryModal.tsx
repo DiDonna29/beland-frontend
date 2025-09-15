@@ -1,11 +1,22 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, Modal, Alert } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Modal,
+  Alert,
+  Platform,
+  ActivityIndicator,
+} from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { colors } from "../../../styles/colors";
 import { modalStyles } from "../styles";
 import { AddressForm } from "./AddressForm";
 import { useOrdersStoreAPI } from "../../../stores/useOrdersStoreAPI";
 import { useCartStore, CartProduct } from "../../../stores/useCartStore";
 import { useCustomAlert } from "../../../hooks/useCustomAlert";
 import { CustomAlert } from "../../../components/ui/CustomAlert";
+import { useAuth } from "../../../hooks/AuthContext";
 import {
   DeliveryAddress,
   OrderItem,
@@ -31,6 +42,7 @@ export const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
   const { products: cartProducts, clearCart } = useCartStore();
   const { showAlert, alertConfig, showCustomAlert, hideAlert } =
     useCustomAlert();
+  const { requireAuth } = useAuth();
 
   // Reset state when modal closes
   React.useEffect(() => {
@@ -102,30 +114,33 @@ export const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
       console.log("📋 Order request:", orderRequest);
       console.log("🔄 Calling createOrder...");
 
-      const newOrder = await createOrder(orderRequest);
-      console.log("✅ Order created successfully:", newOrder);
+      // Usar requireAuth para proteger la creación de la orden
+      await requireAuth(async () => {
+        const newOrder = await createOrder(orderRequest);
+        console.log("✅ Order created successfully:", newOrder);
 
-      // Clear the cart after successful order creation
-      clearCart();
-      console.log("🧹 Cart cleared");
+        // Clear the cart after successful order creation
+        clearCart();
+        console.log("🧹 Cart cleared");
 
-      // Close modal first, then show success alert
-      onClose();
+        // Close modal first, then show success alert
+        onClose();
 
-      // Show success message using CustomAlert after modal closes
-      setTimeout(() => {
-        console.log("🚀 About to show success CustomAlert...");
-        showCustomAlert(
-          "¡Orden creada exitosamente!",
-          `Tu orden ${newOrder.id.slice(
-            -8
-          )} ha sido creada exitosamente.\n\n💰 Total: $${newOrder.total.toFixed(
-            2
-          )}`,
-          "success"
-        );
-        console.log("✅ CustomAlert shown successfully");
-      }, 300); // Small delay to ensure modal is fully closed
+        // Show success message using CustomAlert after modal closes
+        setTimeout(() => {
+          console.log("🚀 About to show success CustomAlert...");
+          showCustomAlert(
+            "¡Orden creada exitosamente!",
+            `Tu orden ${newOrder.id.slice(
+              -8
+            )} ha sido creada exitosamente.\n\n💰 Total: $${newOrder.total.toFixed(
+              2
+            )}`,
+            "success"
+          );
+          console.log("✅ CustomAlert shown successfully");
+        }, 300); // Small delay to ensure modal is fully closed
+      });
     } catch (error) {
       console.error("❌ Error creating order:", error);
 
@@ -160,36 +175,105 @@ export const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
 
   const renderProcessing = () => (
     <View style={modalStyles.processingContainer}>
-      <Text style={modalStyles.processingTitle}>Creando tu orden...</Text>
-      <Text style={modalStyles.processingSubtitle}>
-        Por favor espera un momento
-      </Text>
-      <TouchableOpacity style={modalStyles.cancelButton} onPress={handleCancel}>
-        <Text style={modalStyles.cancelButtonText}>Cancelar</Text>
-      </TouchableOpacity>
+      <View style={modalStyles.processingCard}>
+        <View style={modalStyles.processingIcon}>
+          <MaterialCommunityIcons
+            name="truck-check"
+            size={36}
+            color={colors.belandOrange}
+          />
+        </View>
+        <ActivityIndicator
+          size="large"
+          color={colors.belandOrange}
+          style={{ marginVertical: 12 }}
+        />
+        <Text style={modalStyles.processingTitle}>Creando tu orden...</Text>
+        <Text style={modalStyles.processingSubtitle}>
+          Por favor espera un momento
+        </Text>
+
+        <Text style={modalStyles.processingDetailText}>
+          {cartProducts.length} artículo{cartProducts.length !== 1 ? "s" : ""} •
+          Total: $
+          {cartProducts
+            .reduce((s, p) => s + p.price * p.quantity, 0)
+            .toFixed(2)}
+        </Text>
+
+        <TouchableOpacity
+          style={[modalStyles.cancelButton, modalStyles.processingCancelButton]}
+          onPress={handleCancel}
+        >
+          <Text
+            style={[
+              modalStyles.cancelButtonText,
+              modalStyles.processingCancelButtonText,
+            ]}
+          >
+            Cancelar
+          </Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 
   return (
     <>
-      <Modal
-        visible={visible}
-        transparent
-        animationType="slide"
-        onRequestClose={handleCancel}
-      >
-        <View style={modalStyles.modalOverlay}>
-          <View
-            style={[
-              modalStyles.modalContent,
-              currentStep === "address_form" && modalStyles.modalContentLarge,
-            ]}
-          >
-            {currentStep === "address_form" && renderAddressForm()}
-            {currentStep === "processing" && renderProcessing()}
+      {Platform.OS === "web" ? (
+        // On web, AddressForm already renders a full-screen overlay. Avoid using Modal to prevent double overlays.
+        <>
+          {visible &&
+            (currentStep === "address_form" ? (
+              renderAddressForm()
+            ) : (
+              // Simple processing overlay for web
+              <View
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  backgroundColor: "rgba(0,0,0,0.45)",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  zIndex: 1000,
+                }}
+              >
+                <View
+                  style={[
+                    modalStyles.modalContent,
+                    modalStyles.modalContentLarge,
+                    { maxWidth: 720 },
+                  ]}
+                >
+                  {renderProcessing()}
+                </View>
+              </View>
+            ))}
+        </>
+      ) : (
+        // Native: keep using Modal
+        <Modal
+          visible={visible}
+          transparent
+          animationType="slide"
+          onRequestClose={handleCancel}
+        >
+          <View style={modalStyles.modalOverlay}>
+            <View
+              style={[
+                modalStyles.modalContent,
+                currentStep === "address_form" && modalStyles.modalContentLarge,
+              ]}
+            >
+              {currentStep === "address_form" && renderAddressForm()}
+              {currentStep === "processing" && renderProcessing()}
+            </View>
           </View>
-        </View>
-      </Modal>
+        </Modal>
+      )}
 
       <CustomAlert
         visible={showAlert}

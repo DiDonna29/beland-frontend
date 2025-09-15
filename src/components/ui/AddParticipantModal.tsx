@@ -8,7 +8,7 @@ import {
   StyleSheet,
   Animated,
   Easing,
-  TouchableWithoutFeedback,
+  Pressable,
 } from "react-native";
 import { Button } from "../ui/Button";
 import { InstagramSearchInput } from "../ui/InstagramSearchInput";
@@ -108,78 +108,70 @@ export const AddParticipantModal: React.FC<AddParticipantModalProps> = ({
       animationType="none"
       onRequestClose={handleClose}
     >
-      <TouchableWithoutFeedback onPress={handleClose}>
-        <Animated.View style={[styles.overlay, { opacity: opacityValue }]}>
-          <TouchableWithoutFeedback>
-            <Animated.View
-              style={[
-                styles.modalContainer,
-                {
-                  transform: [{ scale: scaleValue }],
-                },
-              ]}
-            >
-              {/* Header */}
-              <View style={styles.header}>
-                <View style={styles.iconContainer}>
-                  <Text style={styles.icon}>👥</Text>
-                </View>
-                <Text style={styles.title}>Agregar Participante</Text>
-                <Text style={styles.subtitle}>
-                  Añade a alguien más al grupo
-                </Text>
-              </View>
+      <Animated.View style={[styles.overlay, { opacity: opacityValue }]}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={handleClose} />
+        <Animated.View
+          style={[
+            styles.modalContainer,
+            {
+              transform: [{ scale: scaleValue }],
+            },
+          ]}
+        >
+          {/* Header */}
+          <View style={styles.header}>
+            <View style={styles.iconContainer}>
+              <Text style={styles.icon}>👥</Text>
+            </View>
+            <Text style={styles.title}>Agregar Participante</Text>
+            <Text style={styles.subtitle}>Añade a alguien más al grupo</Text>
+          </View>
 
-              {/* Form */}
-              <View style={styles.form}>
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Nombre completo *</Text>
-                  <TextInput
-                    style={[
-                      styles.textInput,
-                      errors.name && styles.textInputError,
-                    ]}
-                    placeholder="Ej: María González"
-                    value={name}
-                    onChangeText={setName}
-                    autoFocus
-                  />
-                  {errors.name && (
-                    <Text style={styles.errorText}>{errors.name}</Text>
-                  )}
-                </View>
+          {/* Form */}
+          <View style={styles.form}>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Nombre completo *</Text>
+              <TextInput
+                style={[styles.textInput, errors.name && styles.textInputError]}
+                placeholder="Ej: María González"
+                value={name}
+                onChangeText={setName}
+                autoFocus
+              />
+              {errors.name && (
+                <Text style={styles.errorText}>{errors.name}</Text>
+              )}
+            </View>
 
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Instagram *</Text>
-                  <InstagramSearchInput
-                    value={instagramUsername}
-                    onChangeText={setInstagramUsername}
-                    onUserSelect={handleInstagramUserSelect}
-                    placeholder="@usuario_instagram"
-                    error={errors.instagram}
-                  />
-                </View>
-              </View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Instagram *</Text>
+              <InstagramSearchInput
+                value={instagramUsername}
+                onChangeText={setInstagramUsername}
+                onUserSelect={handleInstagramUserSelect}
+                placeholder="@usuario_instagram"
+                error={errors.instagram}
+              />
+            </View>
+          </View>
 
-              {/* Actions */}
-              <View style={styles.actions}>
-                <Button
-                  title="Cancelar"
-                  onPress={handleClose}
-                  variant="secondary"
-                  style={styles.cancelButton}
-                />
-                <Button
-                  title="Agregar"
-                  onPress={handleAdd}
-                  variant="primary"
-                  style={styles.addButton}
-                />
-              </View>
-            </Animated.View>
-          </TouchableWithoutFeedback>
+          {/* Actions */}
+          <View style={styles.actions}>
+            <Button
+              title="Cancelar"
+              onPress={handleClose}
+              variant="secondary"
+              style={styles.cancelButton}
+            />
+            <Button
+              title="Agregar"
+              onPress={handleAdd}
+              variant="primary"
+              style={styles.addButton}
+            />
+          </View>
         </Animated.View>
-      </TouchableWithoutFeedback>
+      </Animated.View>
     </Modal>
   );
 };
