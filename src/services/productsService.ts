@@ -18,8 +18,6 @@ export interface UpdateProductDto {
   category?: string;
 }
 
-
-
 export interface ProductsResponse {
   products: Product[];
   total: number;
@@ -37,7 +35,6 @@ export interface ProductQuery {
 }
 
 export const productsService = {
-  
   async getProducts(query: ProductQuery = {}): Promise<ProductsResponse> {
     const params = new URLSearchParams();
     if (query.page) params.append("page", String(query.page));
@@ -50,19 +47,44 @@ export const productsService = {
     return await apiRequest(url, { method: "GET" });
   },
 
- 
+  // Simple in-memory cache + in-flight dedupe for product fetches
+  _productCache: new Map<string, Product>(),
+  _productInflight: new Map<string, Promise<Product | null>>(),
+
   async getProductById(id: string): Promise<Product | null> {
-    try {
-      const url = `products/${id}`;
-      const data = await apiRequest(url, { method: "GET" });
-      return data as Product;
-    } catch (error) {
-      console.error(`Failed to fetch product with ID ${id}:`, error);
-      return null;
-    }
+    if (!id) return null;
+
+    // Return from cache if available
+    const cached = (this as any)._productCache.get(id);
+    if (cached) return cached as Product;
+
+    // If there's an inflight request, return that promise
+    const inflight = (this as any)._productInflight.get(id);
+    if (inflight) return inflight;
+
+    // Start request and store promise in _productInflight
+    const p = (async () => {
+      try {
+        const url = `products/${id}`;
+        const data = await apiRequest(url, { method: "GET" });
+        if (data) {
+          (this as any)._productCache.set(id, data as Product);
+          return data as Product;
+        }
+        return null;
+      } catch (error) {
+        console.error(`Failed to fetch product with ID ${id}:`, error);
+        return null;
+      } finally {
+        // cleanup inflight
+        (this as any)._productInflight.delete(id);
+      }
+    })();
+
+    (this as any)._productInflight.set(id, p);
+    return p;
   },
 
-  
   async createProduct(dto: CreateProductDto): Promise<Product> {
     const url = `products`;
     const data = await apiRequest(url, {
@@ -73,7 +95,6 @@ export const productsService = {
     return data as Product;
   },
 
- 
   async updateProduct(id: string, dto: UpdateProductDto): Promise<Product> {
     const url = `products/${id}`;
     const data = await apiRequest(url, {
@@ -84,7 +105,6 @@ export const productsService = {
     return data as Product;
   },
 
- 
   async deleteProduct(id: string): Promise<void> {
     const url = `products/${id}`;
     await apiRequest(url, {
@@ -92,7 +112,6 @@ export const productsService = {
     });
   },
 
-  
   async getRandomProducts(count: number = 5): Promise<Product[]> {
     try {
       const response = await this.getProducts({ limit: 100 });

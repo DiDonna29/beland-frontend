@@ -1,4 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
+import { productsService } from "../../services/productsService";
+import { orderService } from "../../services/orderService";
 import {
   View,
   Text,
@@ -12,7 +14,7 @@ import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useOrdersStoreAPI } from "../../stores/useOrdersStoreAPI";
-import { OrderStatus } from "../../types/Order";
+import { Order, OrderStatus } from "../../types/Order";
 import { OrdersStackParamList } from "../../types/navigation";
 import { colors } from "../../styles/colors";
 import { orderDetailStyles } from "./styles";
@@ -34,11 +36,140 @@ const OrderDetailScreen: React.FC = () => {
   const { orderId } = route.params;
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
 
-  const { getOrderById, updateOrderStatus, confirmReception } =
-    useOrdersStoreAPI();
-  const order = getOrderById(orderId);
+  // Use selectors from the store to avoid recreating objects every render
+  const storeOrders = useOrdersStoreAPI((s) => s.orders);
+  const getOrderById = useOrdersStoreAPI((s) => s.getOrderById);
+  const updateOrderStatus = useOrdersStoreAPI((s) => s.updateOrderStatus);
+  const confirmReception = useOrdersStoreAPI((s) => s.confirmReception);
 
-  if (!order) {
+  // Local cached order from store (if any) - memoized so reference is stable
+  const localOrder = useMemo(
+    () => getOrderById(orderId),
+    [storeOrders, getOrderById, orderId]
+  );
+
+  // Fresh order fetched from API endpoint /orders/:id
+  const [apiOrder, setApiOrder] = useState<Order | undefined>(undefined);
+  const [apiLoading, setApiLoading] = useState<boolean>(false);
+
+  // Debug: log completo del order y sus items al montar para inspección
+  useEffect(() => {
+    const base = apiOrder ?? localOrder;
+    try {
+      console.log("[OrderDetail] base order payload:", base);
+      if (base && Array.isArray(base.items)) {
+        base.items.forEach((it, idx) => {
+          console.log(`[OrderDetail] item[${idx}]`, {
+            id: it.id,
+            name: it.name,
+            price: it.price,
+            subtotal: it.subtotal,
+            quantity: it.quantity,
+            image: it.image,
+          });
+        });
+      }
+    } catch (err) {
+      console.warn("[OrderDetail] Error logging order:", err);
+    }
+  }, [apiOrder, localOrder]);
+
+  // Enrich items with product info (name, image) when backend returns minimal item data
+  const [enrichedOrder, setEnrichedOrder] = useState<Order | null>(null);
+  // Track product ids already requested to avoid infinite re-fetching
+  const requestedProductIdsRef = React.useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    let cancelled = false;
+    const base = apiOrder ?? localOrder;
+    if (!base) return;
+
+    const enrich = async () => {
+      try {
+        const items = await Promise.all(
+          (base.items || []).map(async (it: any) => {
+            // If item already has name or image, skip
+            if ((it.name && it.name.length) || (it.image && it.image.length)) {
+              return it;
+            }
+
+            if (!it.product_id) return it;
+
+            // Avoid re-requesting same product id repeatedly
+            if (requestedProductIdsRef.current.has(it.product_id)) {
+              return it;
+            }
+
+            try {
+              const prod = await productsService.getProductById(it.product_id);
+              if (prod) {
+                // mark requested (success)
+                requestedProductIdsRef.current.add(it.product_id);
+                return {
+                  ...it,
+                  name: it.name ?? prod.name,
+                  image: it.image ?? (prod.image_url || prod.image),
+                };
+              }
+            } catch (err) {
+              console.warn(
+                "[OrderDetail] failed to fetch product for item",
+                it.product_id,
+                err
+              );
+              // mark requested to avoid retry loops
+              requestedProductIdsRef.current.add(it.product_id);
+            }
+
+            return it;
+          })
+        );
+
+        if (!cancelled) {
+          // Only update if something changed
+          setEnrichedOrder({ ...base, items } as any);
+        }
+      } catch (err) {
+        console.warn("[OrderDetail] error enriching order items:", err);
+      }
+    };
+
+    enrich();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [apiOrder, localOrder]);
+
+  // Fetch fresh order detail from API endpoint if not present locally or to refresh
+  useEffect(() => {
+    let cancelled = false;
+    const fetchDetail = async () => {
+      if (!orderId) return;
+      setApiLoading(true);
+      try {
+        const fetched = await orderService.getOrderById(orderId);
+        if (!cancelled) {
+          setApiOrder(fetched as Order);
+        }
+      } catch (err) {
+        console.warn("[OrderDetail] could not fetch order from API:", err);
+      } finally {
+        if (!cancelled) setApiLoading(false);
+      }
+    };
+
+    fetchDetail();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [orderId]);
+
+  const baseOrder = apiOrder ?? localOrder;
+  const displayOrder = enrichedOrder ?? baseOrder;
+
+  if (!baseOrder) {
     return (
       <SafeAreaView style={orderDetailStyles.container}>
         <View style={orderDetailStyles.errorContainer}>
@@ -160,12 +291,17 @@ const OrderDetailScreen: React.FC = () => {
     });
   };
 
-  const formatCurrency = (amount: number): string => {
-    return `$${amount.toFixed(2)}`;
+  // Safe currency formatter: acepta number | string | undefined and evita llamar toFixed sobre undefined
+  const formatCurrency = (amount?: number | string | null): string => {
+    if (amount === null || amount === undefined || amount === "")
+      return "$0.00";
+    const n = typeof amount === "string" ? parseFloat(amount) : amount;
+    if (Number.isNaN(n) || n === null || n === undefined) return "$0.00";
+    return `$${n.toFixed(2)}`;
   };
 
   const handleCancelOrder = () => {
-    if (order.status === "pending" || order.status === "confirmed") {
+    if (baseOrder.status === "pending" || baseOrder.status === "confirmed") {
       Alert.alert(
         "Cancelar orden",
         "¿Estás seguro de que quieres cancelar esta orden? Esta acción no se puede deshacer.",
@@ -244,10 +380,10 @@ const OrderDetailScreen: React.FC = () => {
   };
 
   const canCancelOrder =
-    order.status === "pending" || order.status === "confirmed";
+    baseOrder.status === "pending" || baseOrder.status === "confirmed";
 
-  const canConfirmReception = order.status === "shipped";
-  const canLeaveFeedback = order.status === "delivered";
+  const canConfirmReception = baseOrder.status === "shipped";
+  const canLeaveFeedback = baseOrder.status === "delivered";
 
   return (
     <SafeAreaView style={orderDetailStyles.container}>
@@ -265,7 +401,7 @@ const OrderDetailScreen: React.FC = () => {
               Detalle de la orden
             </Text>
             <Text style={orderDetailStyles.headerSubtitle}>
-              Orden #{order.id.slice(-8)}
+              Orden #{baseOrder.id.slice(-8)}
             </Text>
           </View>
         </View>
@@ -281,32 +417,32 @@ const OrderDetailScreen: React.FC = () => {
           <View style={orderDetailStyles.heroHeader}>
             <View style={orderDetailStyles.heroInfo}>
               <Text style={orderDetailStyles.orderId}>
-                #{order.id.slice(-8)}
+                #{baseOrder.id.slice(-8)}
               </Text>
               <Text style={orderDetailStyles.orderDate}>
-                {formatDate(order.createdAt)}
+                {formatDate(baseOrder.createdAt)}
               </Text>
             </View>
             <View style={orderDetailStyles.statusContainer}>
               <View
                 style={[
                   orderDetailStyles.statusBadge,
-                  { backgroundColor: getStatusColor(order.status) },
+                  { backgroundColor: getStatusColor(baseOrder.status) },
                 ]}
               >
                 <MaterialCommunityIcons
-                  name={getStatusIcon(order.status)}
+                  name={getStatusIcon(baseOrder.status)}
                   size={16}
                   color="white"
                 />
                 <Text style={orderDetailStyles.statusText}>
-                  {getStatusText(order.status)}
+                  {getStatusText(baseOrder.status)}
                 </Text>
               </View>
             </View>
           </View>
 
-          {order.status !== "cancelled" && (
+          {baseOrder.status !== "cancelled" && (
             <View style={orderDetailStyles.progressContainer}>
               <Text style={orderDetailStyles.progressLabel}>
                 Progreso del pedido
@@ -315,7 +451,7 @@ const OrderDetailScreen: React.FC = () => {
                 <View
                   style={[
                     orderDetailStyles.progressFill,
-                    { width: `${getProgressPercentage(order.status)}%` },
+                    { width: `${getProgressPercentage(baseOrder.status)}%` },
                   ]}
                 />
               </View>
@@ -329,7 +465,7 @@ const OrderDetailScreen: React.FC = () => {
             <View style={orderDetailStyles.cardIcon}>
               <MaterialCommunityIcons
                 name={
-                  order.deliveryType === "home"
+                  baseOrder.deliveryType === "home"
                     ? "truck-delivery"
                     : "account-group"
                 }
@@ -346,7 +482,7 @@ const OrderDetailScreen: React.FC = () => {
             <View style={orderDetailStyles.infoRow}>
               <MaterialCommunityIcons
                 name={
-                  order.deliveryType === "home"
+                  baseOrder.deliveryType === "home"
                     ? "home-outline"
                     : "account-group-outline"
                 }
@@ -354,35 +490,36 @@ const OrderDetailScreen: React.FC = () => {
                 color={colors.textSecondary}
               />
               <Text style={orderDetailStyles.infoText}>
-                {order.deliveryType === "home"
+                {baseOrder.deliveryType === "home"
                   ? "Envío a domicilio"
                   : "Juntada circular"}
               </Text>
             </View>
 
-            {order.deliveryAddress && (
+            {baseOrder.deliveryAddress && (
               <View style={orderDetailStyles.addressContainer}>
                 <Text style={orderDetailStyles.addressTitle}>
                   📍 Dirección de entrega
                 </Text>
                 <Text style={orderDetailStyles.addressText}>
-                  {order.deliveryAddress.street}
+                  {baseOrder.deliveryAddress.street}
                 </Text>
                 <Text style={orderDetailStyles.addressText}>
-                  {order.deliveryAddress.city}, {order.deliveryAddress.state}
+                  {baseOrder.deliveryAddress.city},{" "}
+                  {baseOrder.deliveryAddress.state}
                 </Text>
                 <Text style={orderDetailStyles.addressText}>
-                  CP: {order.deliveryAddress.zipCode}
+                  CP: {baseOrder.deliveryAddress.zipCode}
                 </Text>
-                {order.deliveryAddress.additionalInfo && (
+                {baseOrder.deliveryAddress.additionalInfo && (
                   <Text style={orderDetailStyles.addressText}>
-                    {order.deliveryAddress.additionalInfo}
+                    {baseOrder.deliveryAddress.additionalInfo}
                   </Text>
                 )}
               </View>
             )}
 
-            {order.groupId && (
+            {baseOrder.groupId && (
               <View style={orderDetailStyles.infoRow}>
                 <MaterialCommunityIcons
                   name="account-group"
@@ -390,7 +527,7 @@ const OrderDetailScreen: React.FC = () => {
                   color={colors.textSecondary}
                 />
                 <Text style={orderDetailStyles.infoText}>
-                  Grupo: {order.groupId}
+                  Grupo: {baseOrder.groupId}
                 </Text>
               </View>
             )}
@@ -408,12 +545,12 @@ const OrderDetailScreen: React.FC = () => {
               />
             </View>
             <Text style={orderDetailStyles.cardTitle}>
-              Productos ({order.items.length})
+              Productos ({(displayOrder?.items || []).length})
             </Text>
           </View>
 
           <View style={orderDetailStyles.itemsList}>
-            {order.items.map((item) => (
+            {(displayOrder?.items || []).map((item) => (
               <View key={item.id} style={orderDetailStyles.itemCard}>
                 <Image
                   source={{ uri: item.image }}
@@ -458,18 +595,18 @@ const OrderDetailScreen: React.FC = () => {
             <View style={orderDetailStyles.summaryRow}>
               <Text style={orderDetailStyles.summaryLabel}>Subtotal:</Text>
               <Text style={orderDetailStyles.summaryValue}>
-                {formatCurrency(order.subtotal)}
+                {formatCurrency(baseOrder.subtotal)}
               </Text>
             </View>
-            {order.deliveryFee > 0 && (
+            {baseOrder.deliveryFee > 0 && (
               <View style={orderDetailStyles.summaryRow}>
                 <Text style={orderDetailStyles.summaryLabel}>Envío:</Text>
                 <Text style={orderDetailStyles.summaryValue}>
-                  {formatCurrency(order.deliveryFee)}
+                  {formatCurrency(baseOrder.deliveryFee)}
                 </Text>
               </View>
             )}
-            {order.discount > 0 && (
+            {baseOrder.discount > 0 && (
               <View style={orderDetailStyles.summaryRow}>
                 <Text style={orderDetailStyles.summaryLabel}>Descuento:</Text>
                 <Text
@@ -478,7 +615,7 @@ const OrderDetailScreen: React.FC = () => {
                     orderDetailStyles.discountText,
                   ]}
                 >
-                  -{formatCurrency(order.discount)}
+                  -{formatCurrency(baseOrder.discount)}
                 </Text>
               </View>
             )}
@@ -486,7 +623,7 @@ const OrderDetailScreen: React.FC = () => {
               <View style={orderDetailStyles.summaryRow}>
                 <Text style={orderDetailStyles.totalLabel}>Total:</Text>
                 <Text style={orderDetailStyles.totalValue}>
-                  {formatCurrency(order.total)}
+                  {formatCurrency(baseOrder.total)}
                 </Text>
               </View>
             </View>
@@ -494,7 +631,7 @@ const OrderDetailScreen: React.FC = () => {
         </View>
 
         {/* Notes */}
-        {order.notes && (
+        {baseOrder.notes && (
           <View style={orderDetailStyles.card}>
             <View style={orderDetailStyles.cardHeader}>
               <View style={orderDetailStyles.cardIcon}>
@@ -507,7 +644,7 @@ const OrderDetailScreen: React.FC = () => {
               <Text style={orderDetailStyles.cardTitle}>Notas especiales</Text>
             </View>
             <View style={orderDetailStyles.notesContainer}>
-              <Text style={orderDetailStyles.notesText}>{order.notes}</Text>
+              <Text style={orderDetailStyles.notesText}>{baseOrder.notes}</Text>
             </View>
           </View>
         )}
