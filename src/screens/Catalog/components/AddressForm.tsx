@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { DeliveryAddress } from "../../../types/Order";
+import { AddressMapPicker } from "./AddressMapPicker";
 import geocodingService from "../../../services/geocodingService";
 import { colors } from "../../../styles/colors";
 
@@ -54,8 +55,12 @@ export const AddressForm: React.FC<AddressFormProps> = ({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isWeb, onCancel]);
 
-  const [errors, setErrors] = useState<Partial<DeliveryAddress>>({});
-  const [touched, setTouched] = useState<Partial<DeliveryAddress>>({});
+  const [errors, setErrors] = useState<
+    Partial<Record<keyof DeliveryAddress, string | null>>
+  >({});
+  const [touched, setTouched] = useState<
+    Partial<Record<keyof DeliveryAddress, boolean>>
+  >({});
   const streetRef = useRef<any>(null);
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<
@@ -64,6 +69,20 @@ export const AddressForm: React.FC<AddressFormProps> = ({
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [isValidated, setIsValidated] = useState(false);
   const debounceRef = useRef<number | null>(null);
+  const [mapPickerVisible, setMapPickerVisible] = useState(false);
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const toastTimer = useRef<number | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setToastVisible(true);
+    if (toastTimer.current) window.clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => {
+      setToastVisible(false);
+      toastTimer.current = null;
+    }, 2500);
+  };
 
   // Focus first field on web for better keyboard UX
   useEffect(() => {
@@ -120,13 +139,15 @@ export const AddressForm: React.FC<AddressFormProps> = ({
         return null;
 
       case "state":
-        if (value.trim() && value.trim().length < 2)
+        // Provincia ahora es obligatoria
+        if (!value.trim()) return "La provincia es requerida";
+        if (value.trim().length < 2)
           return "La provincia debe tener al menos 2 caracteres";
         return null;
 
       case "zipCode":
-        // Postal codes can contain letters or numbers depending on the country.
-        // We no longer enforce a numeric-only format here; allow free-form input.
+        // Código postal obligatorio (libre-formato)
+        if (!value.trim()) return "El código postal es requerido";
         return null;
 
       case "country":
@@ -139,18 +160,39 @@ export const AddressForm: React.FC<AddressFormProps> = ({
   };
 
   const validateForm = (): boolean => {
-    const newErrors: Partial<DeliveryAddress> = {};
+    const newErrors: Partial<Record<keyof DeliveryAddress, string | null>> = {};
     let isValid = true;
 
     // Validate required fields
-    Object.keys(address).forEach((key) => {
-      const fieldKey = key as keyof DeliveryAddress;
-      const error = validateField(fieldKey, address[fieldKey] || "");
+    // Only additionalInfo may be empty; enforce validation on other fields
+    const requiredFields: (keyof DeliveryAddress)[] = [
+      "street",
+      "city",
+      "state",
+      "zipCode",
+      "country",
+    ];
+
+    requiredFields.forEach((fieldKey) => {
+      const raw = address[fieldKey];
+      const val =
+        typeof raw === "string" || typeof raw === "number" ? String(raw) : "";
+      const error = validateField(fieldKey, val);
       if (error) {
         newErrors[fieldKey] = error;
         isValid = false;
       }
     });
+
+    // Mark required fields as touched so inline errors appear after submit
+    setTouched((prev) => ({
+      ...prev,
+      street: true,
+      city: true,
+      state: true,
+      zipCode: true,
+      country: true,
+    }));
 
     setErrors(newErrors);
     return isValid;
@@ -240,7 +282,10 @@ export const AddressForm: React.FC<AddressFormProps> = ({
 
   const handleBlur = (field: keyof DeliveryAddress) => {
     setTouched((prev) => ({ ...prev, [field]: true }));
-    const error = validateField(field, address[field] || "");
+    const raw = address[field];
+    const val =
+      typeof raw === "string" || typeof raw === "number" ? String(raw) : "";
+    const error = validateField(field, val);
     setErrors((prev) => ({ ...prev, [field]: error }));
   };
 
@@ -250,6 +295,12 @@ export const AddressForm: React.FC<AddressFormProps> = ({
         style={[styles.container, isWeb && styles.webInnerContainer]}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
+        {/* Toast: aparece temporalmente cuando una dirección se autocompleta */}
+        {toastVisible && (
+          <View style={styles.toast} pointerEvents="none">
+            <Text style={styles.toastText}>{toastMessage}</Text>
+          </View>
+        )}
         {isWeb && (
           <TouchableOpacity
             accessibilityLabel="Cerrar"
@@ -314,6 +365,19 @@ export const AddressForm: React.FC<AddressFormProps> = ({
                     placeholderTextColor="#999"
                     autoCapitalize="words"
                   />
+
+                  {/* Map picker button */}
+                  <TouchableOpacity
+                    accessibilityLabel="Seleccionar ubicación en el mapa"
+                    onPress={() => setMapPickerVisible(true)}
+                    style={{ marginLeft: 8 }}
+                  >
+                    <MaterialCommunityIcons
+                      name="map-marker-outline"
+                      size={22}
+                      color={colors.belandOrange}
+                    />
+                  </TouchableOpacity>
                 </View>
                 {errors.street && touched.street && (
                   <Text style={styles.errorText}>{errors.street}</Text>
@@ -337,10 +401,22 @@ export const AddressForm: React.FC<AddressFormProps> = ({
                               state: details.state || prev.state,
                               zipCode: details.postalCode || prev.zipCode,
                               country: details.country || prev.country,
+                              latitude: details.lat ?? prev.latitude,
+                              longitude: details.lng ?? prev.longitude,
                             }));
                             setSuggestions([]);
                             setQuery("");
                             setIsValidated(true);
+                            // mark touched so validation updates
+                            setTouched((prev) => ({
+                              ...prev,
+                              street: true,
+                              city: true,
+                              state: true,
+                              zipCode: true,
+                              country: true,
+                            }));
+                            showToast("Dirección autocompletada");
                           }
                         }}
                       >
@@ -350,6 +426,13 @@ export const AddressForm: React.FC<AddressFormProps> = ({
                       </TouchableOpacity>
                     ))}
                   </View>
+                )}
+                {/* Mostrar coordenadas seleccionadas si existen */}
+                {address.latitude && address.longitude && (
+                  <Text style={{ color: "#666", marginTop: 6, marginLeft: 6 }}>
+                    Ubicación seleccionada: {address.latitude.toFixed(6)},{" "}
+                    {address.longitude.toFixed(6)}
+                  </Text>
                 )}
               </View>
 
@@ -560,6 +643,59 @@ export const AddressForm: React.FC<AddressFormProps> = ({
           </View>
         </View>
       </KeyboardAvoidingView>
+
+      {/* Map picker modal */}
+      <AddressMapPicker
+        visible={mapPickerVisible}
+        onClose={() => setMapPickerVisible(false)}
+        initial={
+          address.latitude && address.longitude
+            ? { latitude: address.latitude, longitude: address.longitude }
+            : null
+        }
+        onSelect={(coords) => {
+          // When user selects coords from the picker, try reverse-geocoding to fill address
+          (async () => {
+            try {
+              const normalized = await geocodingService.reverseGeocode(
+                coords.latitude,
+                coords.longitude
+              );
+              setAddress((prev) => ({
+                ...prev,
+                latitude: coords.latitude,
+                longitude: coords.longitude,
+                street: normalized?.street || prev.street,
+                city: normalized?.city || prev.city,
+                state: normalized?.state || prev.state,
+                zipCode: normalized?.postalCode || prev.zipCode,
+                country: normalized?.country || prev.country,
+              }));
+              // mark fields touched so errors update
+              setTouched((prev) => ({
+                ...prev,
+                street: true,
+                city: true,
+                state: true,
+                zipCode: true,
+                country: true,
+              }));
+              if (normalized)
+                showToast("Dirección autocompletada desde el mapa");
+            } catch (e) {
+              // if reverse geocode fails, still set coords
+              setAddress((prev) => ({
+                ...prev,
+                latitude: coords.latitude,
+                longitude: coords.longitude,
+              }));
+              showToast("Ubicación seleccionada");
+            } finally {
+              setMapPickerVisible(false);
+            }
+          })();
+        }}
+      />
     </View>
   );
 };
@@ -785,5 +921,22 @@ const styles = StyleSheet.create({
   },
   suggestionText: {
     color: colors.textPrimary,
+  },
+  toast: {
+    position: "absolute",
+    top: 12,
+    left: 24,
+    right: 24,
+    zIndex: 2000,
+    backgroundColor: "rgba(0,0,0,0.8)",
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  toastText: {
+    color: "white",
+    fontSize: 14,
+    fontWeight: "600",
   },
 });
