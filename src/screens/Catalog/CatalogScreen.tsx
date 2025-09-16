@@ -175,6 +175,32 @@ export const CatalogScreen = () => {
     loadCommunityResources(1, 6);
   }, []);
 
+  // Si el usuario inicia sesión después de cargar la pantalla, recargar
+  // recursos de comunidad y balance para que los beneficios aparezcan sin
+  // necesidad de hacer refresh manual.
+  useEffect(() => {
+    if (isAuthenticated) {
+      // Refetch balance y recursos cuando el usuario se autentique
+      (async () => {
+        try {
+          await refetchBalance();
+        } catch (e) {
+          console.warn("No se pudo refrescar balance al autenticarse:", e);
+        }
+
+        try {
+          // Forzar recarga de recursos de comunidad
+          await loadCommunityResources(1, 6);
+        } catch (e) {
+          console.warn(
+            "No se pudo recargar recursos de comunidad al autenticarse:",
+            e
+          );
+        }
+      })();
+    }
+  }, [isAuthenticated]);
+
   // Refs & state to control carousels (community and products)
   const communityScrollRef = useRef<ScrollView | null>(null);
   const communityX = useRef(0);
@@ -211,10 +237,47 @@ export const CatalogScreen = () => {
       200,
       Math.floor((communityLayoutWidth.current || 600) * 0.8)
     );
-    const target = Math.max(0, communityX.current + dir * step);
-    communityScrollRef.current?.scrollTo({ x: target, animated: true });
+    const maxOffset = Math.max(
+      0,
+      (communityContentWidth.current || 0) - (communityLayoutWidth.current || 0)
+    );
+    const desired = (communityX.current || 0) + dir * step;
+    const target = Math.max(0, Math.min(maxOffset, desired));
+
+    const ref = communityScrollRef.current as any;
+    if (!ref) return;
+
+    try {
+      // RN ScrollView API
+      if (typeof ref.scrollTo === "function") {
+        ref.scrollTo({ x: target, y: 0, animated: true });
+      } else if (typeof ref.scrollToOffset === "function") {
+        ref.scrollToOffset({ offset: target, animated: true });
+      } else {
+        // Web fallback: try native DOM node
+        const node = (ref as any).getNativeScrollRef?.() || ref;
+        if (node && typeof node.scrollTo === "function") {
+          try {
+            node.scrollTo({ left: target, top: 0, behavior: "smooth" });
+          } catch (err) {
+            node.scrollLeft = target;
+          }
+        }
+      }
+    } catch (err) {
+      try {
+        const node = (ref as any).getScrollableNode
+          ? ref.getScrollableNode()
+          : ref;
+        if (node && typeof node.scrollLeft !== "undefined")
+          node.scrollLeft = target;
+      } catch (e) {
+        console.warn("No se pudo desplazar comunidad:", e);
+      }
+    }
+
     // small timeout to let scroll update
-    setTimeout(() => updateCommunityNav(), 200);
+    setTimeout(() => updateCommunityNav(), 250);
   };
 
   const scrollProductsBy = (dir: number) => {
@@ -222,9 +285,44 @@ export const CatalogScreen = () => {
       200,
       Math.floor((productsLayoutWidth.current || 600) * 0.8)
     );
-    const target = Math.max(0, productsX.current + dir * step);
-    productsScrollRef.current?.scrollTo({ x: target, animated: true });
-    setTimeout(() => updateProductsNav(), 200);
+    const maxOffset = Math.max(
+      0,
+      (productsContentWidth.current || 0) - (productsLayoutWidth.current || 0)
+    );
+    const desired = (productsX.current || 0) + dir * step;
+    const target = Math.max(0, Math.min(maxOffset, desired));
+
+    const ref = productsScrollRef.current as any;
+    if (!ref) return;
+
+    try {
+      if (typeof ref.scrollTo === "function") {
+        ref.scrollTo({ x: target, y: 0, animated: true });
+      } else if (typeof ref.scrollToOffset === "function") {
+        ref.scrollToOffset({ offset: target, animated: true });
+      } else {
+        const node = (ref as any).getNativeScrollRef?.() || ref;
+        if (node && typeof node.scrollTo === "function") {
+          try {
+            node.scrollTo({ left: target, top: 0, behavior: "smooth" });
+          } catch (err) {
+            node.scrollLeft = target;
+          }
+        }
+      }
+    } catch (err) {
+      try {
+        const node = (ref as any).getScrollableNode
+          ? ref.getScrollableNode()
+          : ref;
+        if (node && typeof node.scrollLeft !== "undefined")
+          node.scrollLeft = target;
+      } catch (e) {
+        console.warn("No se pudo desplazar productos:", e);
+      }
+    }
+
+    setTimeout(() => updateProductsNav(), 250);
   };
 
   // Componente local para la sección Comunidad en el Catálogo
@@ -384,8 +482,8 @@ export const CatalogScreen = () => {
                 updateCommunityNav();
               }}
               scrollEventThrottle={50}
-              onContentSizeChange={(w) => {
-                communityContentWidth.current = w as number;
+              onContentSizeChange={(contentWidth, contentHeight) => {
+                communityContentWidth.current = contentWidth || 0;
                 updateCommunityNav();
               }}
               onLayout={(e) => {
