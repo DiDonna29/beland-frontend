@@ -34,44 +34,14 @@ export const RECYCLING_TYPES: RecyclingType[] = [
 ];
 
 export const MOCK_RECYCLING_POINTS: RecyclingPoint[] = [
+  // Reemplazado por la única ubicación solicitada.
+  // Nota: latitude/longitude son placeholders (0,0). Actualizar con coordenadas reales si se dispone.
   {
-    id: "1",
-    name: "Punto Palermo",
-    address: "Av. Córdoba 3500, Palermo",
-    latitude: -34.5906,
-    longitude: -58.4069,
-    acceptedWasteTypes: ["plastic", "paper", "electronics"],
-  },
-  {
-    id: "2",
-    name: "EcoPunto Recoleta",
-    address: "Av. Las Heras 2500, Recoleta",
-    latitude: -34.5875,
-    longitude: -58.3974,
-    acceptedWasteTypes: ["plastic", "glass"],
-  },
-  {
-    id: "3",
-    name: "Centro Verde Belgrano",
-    address: "Av. Cabildo 2800, Belgrano",
-    latitude: -34.5631,
-    longitude: -58.4553,
-    acceptedWasteTypes: ["plastic", "paper", "glass", "organic"],
-  },
-  {
-    id: "4",
-    name: "Punto Verde Villa Crespo",
-    address: "Av. Corrientes 4500, Villa Crespo",
-    latitude: -34.5998,
-    longitude: -58.4372,
-    acceptedWasteTypes: ["electronics", "glass"],
-  },
-  {
-    id: "5",
-    name: "Estación Sustentable Caballito",
-    address: "Av. Rivadavia 5200, Caballito",
-    latitude: -34.6118,
-    longitude: -58.4394,
-    acceptedWasteTypes: ["plastic", "paper", "organic"],
+    id: "r-quito-01",
+    name: "Punto de reciclaje - Quito",
+    address: "Av. Río Coca E5 255, Quito 170138, Ecuador",
+    latitude: -0.16184031732953938,
+    longitude: -78.48065618466048,
+    acceptedWasteTypes: ["plastic", "paper", "electronics", "glass", "organic"],
   },
 ];

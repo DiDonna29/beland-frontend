@@ -143,7 +143,10 @@ export const GroupSelectModal: React.FC<GroupSelectModalProps> = ({
                         ⏰ {item.deliveryTime}
                       </Text>
                       <Text style={{ fontSize: 13, color: "#999" }}>
-                        👥 {item.participantsList.length}
+                        👥{" "}
+                        {item.participantsList?.length ??
+                          item.participants?.length ??
+                          0}
                       </Text>
                     </View>
                     {!isAdmin && (

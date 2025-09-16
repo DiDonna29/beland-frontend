@@ -73,16 +73,40 @@ export const MapViewWeb: React.FC<MapViewWebProps> = ({
   onSelectPoint,
 }) => {
   const mapRef = useRef<any>(null);
-  const center = userLocation
-    ? [userLocation.latitude, userLocation.longitude]
-    : [-34.6037, -58.3816];
-  let zoom = selectedPointId ? 15 : 13;
-  if (typeof window !== "undefined" && window.innerWidth < 600) {
-    zoom = selectedPointId ? 13.5 : 12.5;
-  }
   const selectedPoint = points.find((p) => p.id === selectedPointId);
-  let centerLat = selectedPoint ? selectedPoint.latitude : center[0];
-  let centerLng = selectedPoint ? selectedPoint.longitude : center[1];
+
+  // Determine center with priority: selectedPoint -> userLocation -> first point -> neutral fallback
+  let centerLat: number;
+  let centerLng: number;
+  let zoom: number;
+
+  if (selectedPoint) {
+    centerLat = selectedPoint.latitude;
+    centerLng = selectedPoint.longitude;
+    zoom = 15;
+  } else if (userLocation) {
+    centerLat = userLocation.latitude;
+    centerLng = userLocation.longitude;
+    zoom = 13;
+  } else if (points && points.length > 0) {
+    centerLat = points[0].latitude;
+    centerLng = points[0].longitude;
+    zoom = 13;
+  } else {
+    // Neutral global fallback (no Buenos Aires)
+    centerLat = 0;
+    centerLng = 0;
+    zoom = 2;
+  }
+
+  // Mobile adjustments for zoom and visual offset when there's a selected point
+  if (typeof window !== "undefined" && window.innerWidth < 600) {
+    if (selectedPoint) {
+      zoom = 13.5;
+    } else if (zoom >= 13) {
+      zoom = 12.5;
+    }
+  }
   // Offset visual para centrar el punto en móviles web
   if (
     typeof window !== "undefined" &&

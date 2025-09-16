@@ -16,6 +16,8 @@ export interface Group {
   leader: string;
   products: Product[];
   participants: Participant[];
+  // legacy / alternate naming used in some mock data and components
+  participantsList?: Participant[];
   totalAmount: number;
   costPerPerson: number;
   beCoinsEarned: number;
