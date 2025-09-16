@@ -21,8 +21,10 @@ export interface Transaction {
     | "exchange"
     | "payment"
     | "collection";
+  // Legacy: `amount` (numeric), older `amount_beicon`, and new `amount_becoin`
   amount: number;
   amount_beicon: number;
+  amount_becoin?: number;
   description: string;
   date: string;
   status: "completed" | "pending" | "failed";
