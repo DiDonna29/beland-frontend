@@ -100,18 +100,40 @@ const mapBackendTransactionToFrontend = (
   return {
     id: backendTransaction.id,
     type,
+    // Normalizar montos: preferir `amount_becoin` (nuevo), luego `amount_beicon`, luego `amount`
     amount: isReceive
-      ? Math.abs(convertBackendTransactionAmount(backendTransaction.amount))
-      : convertBackendTransactionAmount(backendTransaction.amount),
-    amount_beicon: isReceive
       ? Math.abs(
-          backendTransaction.amount_beicon !== undefined
+          (backendTransaction as any).amount_becoin !== undefined
+            ? convertBackendTransactionAmount(
+                (backendTransaction as any).amount_becoin
+              )
+            : backendTransaction.amount_beicon !== undefined
             ? convertBackendTransactionAmount(backendTransaction.amount_beicon)
             : convertBackendTransactionAmount(backendTransaction.amount)
+        )
+      : (backendTransaction as any).amount_becoin !== undefined
+      ? convertBackendTransactionAmount(
+          (backendTransaction as any).amount_becoin
         )
       : backendTransaction.amount_beicon !== undefined
       ? convertBackendTransactionAmount(backendTransaction.amount_beicon)
       : convertBackendTransactionAmount(backendTransaction.amount),
+    // Mantener campo legacy `amount_beicon` para compatibilidad con componentes que lo usen
+    amount_beicon:
+      (backendTransaction as any).amount_becoin !== undefined
+        ? convertBackendTransactionAmount(
+            (backendTransaction as any).amount_becoin
+          )
+        : backendTransaction.amount_beicon !== undefined
+        ? convertBackendTransactionAmount(backendTransaction.amount_beicon)
+        : convertBackendTransactionAmount(backendTransaction.amount),
+    // Nuevo campo explícito (opcional)
+    amount_becoin:
+      (backendTransaction as any).amount_becoin !== undefined
+        ? convertBackendTransactionAmount(
+            (backendTransaction as any).amount_becoin
+          )
+        : undefined,
     description: isReceive
       ? getTransactionDescription(type, backendTransaction)
       : getTransactionDescription(type, backendTransaction),
