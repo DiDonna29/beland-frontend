@@ -27,6 +27,8 @@ export interface DeliveryAddress {
   zipCode?: string;
   country: string;
   additionalInfo?: string; // Apartamento, referencias, etc.
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface Order {

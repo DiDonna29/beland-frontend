@@ -223,6 +223,28 @@ export async function geocodeTextAddress(
   return normalized;
 }
 
+export async function reverseGeocode(
+  lat: number,
+  lng: number
+): Promise<NormalizedAddress | null> {
+  if (!API_KEY) return null;
+  const url = `${GEOCODE}?latlng=${encodeURIComponent(
+    lat + "," + lng
+  )}&language=es&key=${API_KEY}`;
+  const json = await fetchJson(url);
+  if (!json || !Array.isArray(json.results) || json.results.length === 0)
+    return null;
+  const best = json.results[0];
+  const comps = best.address_components || [];
+  const geom = best.geometry?.location;
+  const normalized = extractComponents(comps);
+  if (geom) {
+    normalized.lat = geom.lat;
+    normalized.lng = geom.lng;
+  }
+  return normalized;
+}
+
 export async function validateAddress(
   address: Partial<NormalizedAddress>
 ): Promise<{ ok: boolean; normalized?: NormalizedAddress; reason?: string }> {
@@ -255,5 +277,6 @@ export default {
   autocomplete,
   getPlaceDetails,
   geocodeTextAddress,
+  reverseGeocode,
   validateAddress,
 };
