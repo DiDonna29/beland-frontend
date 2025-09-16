@@ -60,11 +60,18 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
     }
   };
 
-  // Forzar monto positivo para transferencias recibidas
+  // Forzar monto positivo para transferencias recibidas y usar el campo preferido
+  const resolvedAmount =
+    transaction.amount_becoin !== undefined
+      ? Number(transaction.amount_becoin)
+      : transaction.amount_beicon !== undefined
+      ? Number(transaction.amount_beicon)
+      : Number(transaction.amount || 0);
+
   const displayAmount =
     transaction.type === "receive" || transaction.type === "collection"
-      ? Math.abs(transaction.amount_beicon)
-      : transaction.amount_beicon;
+      ? Math.abs(resolvedAmount)
+      : resolvedAmount;
 
   return (
     <Card style={styles.container}>

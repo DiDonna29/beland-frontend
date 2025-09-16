@@ -4,7 +4,9 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { colors } from "../../styles/colors";
 import { DashboardScreen } from "../../screens/DashboardScreen";
 import { WalletScreen } from "../../screens/WalletScreen";
-import { CommunityScreen } from "../../screens/Community";
+// Nota: la vista de Comunidad se integrará dentro de CatalogScreen.
+// Importamos el stack de Groups para la pestaña de Grupos
+import { GroupsStackNavigator } from "./GroupsStackNavigator";
 import { CatalogScreen } from "../../screens/CatalogScreen";
 import { HistoryScreen } from "../../screens/HistoryScreen";
 import { OrdersStackNavigator } from "./OrdersStackNavigator";
@@ -121,11 +123,7 @@ export const MainTabNavigator = () => {
         component={WalletScreen}
         options={{ tabBarLabel: "Wallet" }}
       />
-      <Tab.Screen
-        name="Community"
-        component={CommunityScreen}
-        options={{ tabBarLabel: "Comunidad" }}
-      />
+
       <Tab.Screen
         name="Catalog"
         component={CatalogScreen}
@@ -135,6 +133,12 @@ export const MainTabNavigator = () => {
         name="Orders"
         component={OrdersStackNavigator}
         options={{ tabBarLabel: "Órdenes" }}
+      />
+
+      <Tab.Screen
+        name="Groups"
+        component={GroupsStackNavigator}
+        options={{ tabBarLabel: "Grupos" }}
       />
     </Tab.Navigator>
   );
