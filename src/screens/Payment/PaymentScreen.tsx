@@ -27,6 +27,7 @@ import {
   PaymentMethodSelector,
   PresetAmounts,
 } from "./components";
+import { BankTransferModal } from "./components/BankTransferModal";
 
 // Importar tipos reales
 import { UserResource as RealUserResource } from "../../types/resource";
@@ -82,9 +83,10 @@ const PaymentScreen: React.FC = () => {
   // Estados principales
   const [showFreeAlert, setShowFreeAlert] = useState(false);
   const [showPaymentSuccessAlert, setShowPaymentSuccessAlert] = useState(false);
-  const [selectedMethod, setSelectedMethod] = useState<"payphone" | "becoin">(
-    "payphone"
-  );
+  const [selectedMethod, setSelectedMethod] = useState<
+    "payphone" | "becoin" | "bank_transfer"
+  >("payphone");
+  const [showBankTransferModal, setShowBankTransferModal] = useState(false);
   const [appliedRedemption, setAppliedRedemption] = useState<
     Redemption | RealUserResource | null
   >(null);
@@ -839,6 +841,16 @@ const PaymentScreen: React.FC = () => {
                       ? "Ingresar gratis"
                       : "Pagar con Payphone"}
                   </button>
+                ) : selectedMethod === "bank_transfer" ? (
+                  <button
+                    className={`primary-button bank-transfer-button ${
+                      isLoading ? "loading" : ""
+                    }`}
+                    onClick={() => setShowBankTransferModal(true)}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? "Procesando..." : "Pagar por Transferencia"}
+                  </button>
                 ) : (
                   <button
                     className={`primary-button becoins-button ${
@@ -966,6 +978,12 @@ const PaymentScreen: React.FC = () => {
             });
           }
         }}
+      />
+
+      {/* Modal de transferencia bancaria */}
+      <BankTransferModal
+        visible={showBankTransferModal}
+        onClose={() => setShowBankTransferModal(false)}
       />
     </>
   );

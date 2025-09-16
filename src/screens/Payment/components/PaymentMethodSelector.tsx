@@ -4,8 +4,8 @@ import { BeCoinIcon } from "../../../components/icons/BeCoinIcon";
 import PayphoneIcon from "../../../components/icons/PayphoneIcon";
 
 interface PaymentMethodSelectorProps {
-  selectedMethod: "payphone" | "becoin";
-  onMethodChange: (method: "payphone" | "becoin") => void;
+  selectedMethod: "payphone" | "becoin" | "bank_transfer";
+  onMethodChange: (method: "payphone" | "becoin" | "bank_transfer") => void;
   isPayphoneAvailable?: boolean;
   shouldForceBeCoins?: boolean;
   effectiveAmount?: number;
@@ -71,6 +71,42 @@ export const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
           <BeCoinIcon />
         </div>
         <span style={methodSelectorStyles.methodText}>BeCoins</span>
+      </button>
+
+      <button
+        type="button"
+        style={{
+          ...methodSelectorStyles.methodButton,
+          ...(selectedMethod === "bank_transfer"
+            ? methodSelectorStyles.methodButtonActive
+            : methodSelectorStyles.methodButtonInactive),
+          borderTopRightRadius: 20,
+          borderBottomRightRadius: 20,
+          borderLeft: "1px solid #e8f4fd",
+        }}
+        onClick={() => onMethodChange("bank_transfer")}
+      >
+        <div style={methodSelectorStyles.methodIcon}>
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <rect
+              x="2"
+              y="6"
+              width="20"
+              height="12"
+              rx="2"
+              stroke="#333"
+              strokeWidth="1.2"
+            />
+            <path d="M3 9H21" stroke="#333" strokeWidth="1.2" />
+          </svg>
+        </div>
+        <span style={methodSelectorStyles.methodText}>Transferencia</span>
       </button>
     </div>
   );

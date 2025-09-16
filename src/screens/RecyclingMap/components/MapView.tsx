@@ -36,13 +36,14 @@ export const MapView = () => {
   const [isMapLoading, setIsMapLoading] = useState(true);
 
   useEffect(() => {
-    if (userLocation && filteredPoints.length > 0 && webViewRef.current) {
+    // Always attempt to update map data when points or selection change.
+    if (filteredPoints.length > 0 && webViewRef.current) {
       updateMapData();
     }
   }, [userLocation, filteredPoints, selectedPoint?.id]);
 
   const updateMapData = () => {
-    if (!webViewRef.current || !userLocation) return;
+    if (!webViewRef.current) return;
     const points = filteredPoints.map((point: any) => {
       const isSelected = selectedPoint?.id === point.id;
       return {
@@ -56,7 +57,7 @@ export const MapView = () => {
     });
     const message = {
       type: "updateData",
-      userLocation: userLocation,
+      userLocation: userLocation || null,
       points: points,
       selectedPointId: selectedPoint?.id || null,
     };
@@ -132,7 +133,15 @@ export const MapView = () => {
             }
           }
           function initMap() {
-            var map = L.map('map', { zoomControl: true, attributionControl: false }).setView([-34.6037, -58.3816], 13);
+              // If we have points, center on the first one. Otherwise use a neutral global view (0,0) with low zoom.
+              var initialLat = ${
+                filteredPoints.length > 0 ? filteredPoints[0].latitude : 0
+              };
+              var initialLng = ${
+                filteredPoints.length > 0 ? filteredPoints[0].longitude : 0
+              };
+              var initialZoom = ${filteredPoints.length > 0 ? 13 : 2};
+              var map = L.map('map', { zoomControl: true, attributionControl: false }).setView([initialLat, initialLng], initialZoom);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
             window._nativeMap = map;
             if (window.ReactNativeWebView) {
@@ -176,8 +185,14 @@ export const MapView = () => {
               } else if (data.userLocation) {
                 centerLat = data.userLocation.latitude;
                 centerLng = data.userLocation.longitude;
+              } else if (data.points && data.points.length > 0) {
+                // Default to the first (nearest) point when no user location/selection
+                centerLat = data.points[0].latitude;
+                centerLng = data.points[0].longitude;
+                zoomLevel = 15;
               }
-              if (centerLat && centerLng) {
+              // Only change view if we determined a valid center. Otherwise keep the initial map view.
+              if (typeof centerLat === 'number' && typeof centerLng === 'number') {
                 map.setView([centerLat, centerLng], zoomLevel);
               }
             };

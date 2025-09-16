@@ -9,23 +9,27 @@ import {
 } from "react-native";
 import Modal from "react-native-modal";
 import { useCartStore } from "../../../stores/useCartStore";
+import { useUserBalance } from "../../../hooks/useUserBalance";
 import {
   convertUSDToBeCoins,
   formatBeCoins,
   formatUSDPrice,
   CURRENCY_CONFIG,
 } from "../../../constants/currency";
+import { InsufficientBalanceModal } from "../../Community/components";
 
 interface CartBottomSheetProps {
   visible: boolean;
   onClose: () => void;
   onCheckout?: () => void;
+  onNavigateToRecharge?: () => void;
 }
 
 export const CartBottomSheet: React.FC<CartBottomSheetProps> = ({
   visible,
   onClose,
   onCheckout,
+  onNavigateToRecharge,
 }) => {
   const {
     products,
@@ -36,6 +40,11 @@ export const CartBottomSheet: React.FC<CartBottomSheetProps> = ({
     clearCart,
   } = useCartStore();
   const total = products.reduce((sum, p) => sum + p.price * p.quantity, 0);
+  const { balance } = useUserBalance();
+  const [insufficientModalVisible, setInsufficientModalVisible] =
+    React.useState(false);
+
+  const requiredBeCoins = convertUSDToBeCoins(total);
 
   const handleRemoveProduct = async (productId: string) => {
     try {
@@ -71,103 +80,128 @@ export const CartBottomSheet: React.FC<CartBottomSheetProps> = ({
   };
 
   return (
-    <Modal
-      isVisible={visible}
-      onBackdropPress={onClose}
-      style={styles.modal}
-      onSwipeComplete={onClose}
-      propagateSwipe
-    >
-      <View style={styles.sheet}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Carrito</Text>
-          <TouchableOpacity onPress={clearCart}>
-            <Text style={styles.clear}>Vaciar</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={{ maxHeight: 400, minHeight: 100 }}>
-          {products.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>Tu carrito está vacío</Text>
-            </View>
-          ) : (
-            <FlatList
-              data={products}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
-                <View style={styles.itemRow}>
-                  {item.image && (
-                    <Image source={{ uri: item.image }} style={styles.image} />
-                  )}
-                  <View style={styles.itemInfo}>
-                    <Text style={styles.itemName}>{item.name}</Text>
-                    <View>
-                      <Text style={styles.itemPrice}>
-                        {CURRENCY_CONFIG.CURRENCY_DISPLAY_SYMBOL}
-                        {formatUSDPrice(item.price)}
-                      </Text>
-                      <Text style={styles.itemPriceBecoins}>
-                        {formatBeCoins(convertUSDToBeCoins(item.price))}
-                      </Text>
-                    </View>
-                    <View style={styles.qtyRow}>
-                      <TouchableOpacity
-                        onPress={() =>
-                          handleUpdateQuantity(
-                            item.id,
-                            Math.max(1, item.quantity - 1)
-                          )
-                        }
-                      >
-                        <Text style={styles.qtyBtn}>-</Text>
-                      </TouchableOpacity>
-                      <Text style={styles.qty}>{item.quantity}</Text>
-                      <TouchableOpacity
-                        onPress={() =>
-                          handleUpdateQuantity(item.id, item.quantity + 1)
-                        }
-                      >
-                        <Text style={styles.qtyBtn}>+</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                  <TouchableOpacity
-                    onPress={() => handleRemoveProduct(item.id)}
-                  >
-                    <Text style={styles.remove}>✕</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-              contentContainerStyle={{ paddingBottom: 12 }}
-              showsVerticalScrollIndicator
-              keyboardShouldPersistTaps="handled"
-            />
-          )}
-        </View>
-        <View style={styles.footer}>
-          <View>
-            <Text style={styles.total}>
-              Total: {CURRENCY_CONFIG.CURRENCY_DISPLAY_SYMBOL}
-              {formatUSDPrice(total)}
-            </Text>
-            <Text style={styles.totalBecoins}>
-              {formatBeCoins(convertUSDToBeCoins(total))}
-            </Text>
+    <>
+      <Modal
+        isVisible={visible}
+        onBackdropPress={onClose}
+        style={styles.modal}
+        onSwipeComplete={onClose}
+        propagateSwipe
+      >
+        <View style={styles.sheet}>
+          <View style={styles.header}>
+            <Text style={styles.title}>Carrito</Text>
+            <TouchableOpacity onPress={clearCart}>
+              <Text style={styles.clear}>Vaciar</Text>
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity
-            style={[
-              styles.checkoutBtn,
-              products.length === 0 && { backgroundColor: "#ccc" },
-            ]}
-            disabled={products.length === 0}
-            onPress={onCheckout}
-          >
-            <Text style={styles.checkoutText}>Finalizar compra</Text>
-          </TouchableOpacity>
+
+          <View style={{ maxHeight: 400, minHeight: 100 }}>
+            {products.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>Tu carrito está vacío</Text>
+              </View>
+            ) : (
+              <FlatList
+                data={products}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => (
+                  <View style={styles.itemRow}>
+                    {item.image && (
+                      <Image
+                        source={{ uri: item.image }}
+                        style={styles.image}
+                      />
+                    )}
+                    <View style={styles.itemInfo}>
+                      <Text style={styles.itemName}>{item.name}</Text>
+                      <View>
+                        <Text style={styles.itemPrice}>
+                          {CURRENCY_CONFIG.CURRENCY_DISPLAY_SYMBOL}
+                          {formatUSDPrice(item.price)}
+                        </Text>
+                        <Text style={styles.itemPriceBecoins}>
+                          {formatBeCoins(convertUSDToBeCoins(item.price))}
+                        </Text>
+                      </View>
+                      <View style={styles.qtyRow}>
+                        <TouchableOpacity
+                          onPress={() =>
+                            handleUpdateQuantity(
+                              item.id,
+                              Math.max(1, item.quantity - 1)
+                            )
+                          }
+                        >
+                          <Text style={styles.qtyBtn}>-</Text>
+                        </TouchableOpacity>
+                        <Text style={styles.qty}>{item.quantity}</Text>
+                        <TouchableOpacity
+                          onPress={() =>
+                            handleUpdateQuantity(item.id, item.quantity + 1)
+                          }
+                        >
+                          <Text style={styles.qtyBtn}>+</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => handleRemoveProduct(item.id)}
+                    >
+                      <Text style={styles.remove}>✕</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+                contentContainerStyle={{ paddingBottom: 12 }}
+                showsVerticalScrollIndicator
+                keyboardShouldPersistTaps="handled"
+              />
+            )}
+          </View>
+          <View style={styles.footer}>
+            <View>
+              <Text style={styles.total}>
+                Total: {CURRENCY_CONFIG.CURRENCY_DISPLAY_SYMBOL}
+                {formatUSDPrice(total)}
+              </Text>
+              <Text style={styles.totalBecoins}>
+                {formatBeCoins(convertUSDToBeCoins(total))}
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={[
+                styles.checkoutBtn,
+                products.length === 0 && { backgroundColor: "#ccc" },
+              ]}
+              disabled={products.length === 0}
+              onPress={() => {
+                // Verificar saldo en BeCoins antes de proceder
+                if ((balance || 0) < requiredBeCoins) {
+                  setInsufficientModalVisible(true);
+                  return;
+                }
+                onCheckout && onCheckout();
+              }}
+            >
+              <Text style={styles.checkoutText}>Finalizar compra</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
-    </Modal>
+      </Modal>
+
+      {/* Modal de saldo insuficiente reutilizable */}
+      <InsufficientBalanceModal
+        visible={insufficientModalVisible}
+        userBalance={balance || 0}
+        requiredAmount={requiredBeCoins}
+        onRecharge={() => {
+          setInsufficientModalVisible(false);
+          onClose();
+          onNavigateToRecharge && onNavigateToRecharge();
+        }}
+        onCancel={() => setInsufficientModalVisible(false)}
+      />
+    </>
   );
 };
 
