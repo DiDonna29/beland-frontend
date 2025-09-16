@@ -703,90 +703,14 @@ export const CatalogScreen = () => {
             {error}
           </Text>
         ) : (
-          // Carrusel horizontal de productos
+          // Revertido a grilla de productos (estilizada)
           <View style={{ paddingVertical: 8 }}>
             {products && products.length > 0 ? (
-              <View>
-                <ScrollView
-                  ref={(ref) => {
-                    productsScrollRef.current = ref;
-                  }}
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={{ paddingLeft: 16, paddingRight: 24 }}
-                  onScroll={(e) => {
-                    productsX.current = e.nativeEvent.contentOffset.x;
-                    updateProductsNav();
-                  }}
-                  scrollEventThrottle={50}
-                  onContentSizeChange={(w) => {
-                    productsContentWidth.current = w as number;
-                    updateProductsNav();
-                  }}
-                  onLayout={(e) => {
-                    productsLayoutWidth.current = e.nativeEvent.layout.width;
-                    updateProductsNav();
-                  }}
-                >
-                  {products.map((p) => (
-                    <View key={p.id} style={{ marginRight: 16 }}>
-                      <ProductCard
-                        product={p}
-                        onAddToCart={handleAddProduct}
-                        isAdding={addingProductId === p.id}
-                      />
-                    </View>
-                  ))}
-                </ScrollView>
-
-                {productsCanLeft && (
-                  <TouchableOpacity
-                    accessibilityLabel="Anterior productos"
-                    accessibilityRole="button"
-                    style={{
-                      position: "absolute",
-                      left: 4,
-                      top: "40%",
-                      zIndex: 10,
-                      backgroundColor: "#FF6B35",
-                      padding: 8,
-                      borderRadius: 22,
-                      elevation: 5,
-                    }}
-                    onPress={() => scrollProductsBy(-1)}
-                  >
-                    <Text
-                      style={{ fontSize: 18, color: "#fff", fontWeight: "700" }}
-                    >
-                      ‹
-                    </Text>
-                  </TouchableOpacity>
-                )}
-
-                {productsCanRight && (
-                  <TouchableOpacity
-                    accessibilityLabel="Siguiente productos"
-                    accessibilityRole="button"
-                    style={{
-                      position: "absolute",
-                      right: 4,
-                      top: "40%",
-                      zIndex: 10,
-                      backgroundColor: "#FF6B35",
-                      padding: 8,
-                      borderRadius: 22,
-                      elevation: 5,
-                    }}
-                    onPress={() => scrollProductsBy(1)}
-                  >
-                    <Text
-                      style={{ fontSize: 18, color: "#fff", fontWeight: "700" }}
-                    >
-                      ›
-                    </Text>
-                  </TouchableOpacity>
-                )}
-              </View>
+              <ProductGrid
+                products={products}
+                onAddToCart={handleAddProduct}
+                addingProductId={addingProductId}
+              />
             ) : (
               <View style={productStyles.emptyState}>
                 <Text style={productStyles.emptyStateText}>
@@ -802,6 +726,10 @@ export const CatalogScreen = () => {
         <CartBottomSheet
           visible={showCart}
           onClose={() => setShowCart(false)}
+          onNavigateToRecharge={() => {
+            setShowCart(false);
+            (navigation as any).navigate("RechargeScreen");
+          }}
           onCheckout={async () => {
             setShowCart(false);
 
