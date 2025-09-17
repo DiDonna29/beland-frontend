@@ -144,6 +144,10 @@ export const CatalogScreen = () => {
   // Comunidad: recursos
   const [communityResources, setCommunityResources] = useState<any[]>([]);
   const [communityLoading, setCommunityLoading] = useState(false);
+  // Control para evitar flicker: mostrar la sección Comunidad sólo cuando
+  // haya recursos y mantenerla visible si reaparece rápidamente (debounce)
+  const [showCommunity, setShowCommunity] = useState(false);
+  const showCommunityTimer = useRef<number | null>(null);
   // Estado para compra directa desde la vista previa de Comunidad
   const [purchaseModalVisible, setPurchaseModalVisible] = useState(false);
   const [insufficientBalanceModalVisible, setInsufficientBalanceModalVisible] =
@@ -174,6 +178,33 @@ export const CatalogScreen = () => {
     communityLoadedRef.current = true;
     loadCommunityResources(1, 6);
   }, []);
+
+  // Evitar parpadeo: si communityResources cambia rápidamente, no ocultar la
+  // sección inmediatamente. Mostrarla inmediatamente cuando haya >0 recursos.
+  useEffect(() => {
+    if (showCommunityTimer.current) {
+      window.clearTimeout(showCommunityTimer.current);
+      showCommunityTimer.current = null;
+    }
+
+    if (communityResources && communityResources.length > 0) {
+      setShowCommunity(true);
+      return;
+    }
+
+    // Si no hay recursos, esperar un breve periodo antes de ocultar
+    showCommunityTimer.current = window.setTimeout(() => {
+      setShowCommunity(false);
+      showCommunityTimer.current = null;
+    }, 500);
+
+    return () => {
+      if (showCommunityTimer.current) {
+        window.clearTimeout(showCommunityTimer.current);
+        showCommunityTimer.current = null;
+      }
+    };
+  }, [communityResources]);
 
   // Si el usuario inicia sesión después de cargar la pantalla, recargar
   // recursos de comunidad y balance para que los beneficios aparezcan sin
@@ -764,8 +795,10 @@ export const CatalogScreen = () => {
           </Text>
         </TouchableOpacity>
 
-        {/* Sección Comunidad integrada dentro del Catálogo */}
-        <CatalogCommunitySection />
+        {/* Sección Comunidad integrada dentro del Catálogo
+            Mostrar solo si hay recursos o si está cargando (para evitar mostrar
+            un título vacío cuando no existan beneficios). */}
+        {showCommunity && <CatalogCommunitySection />}
 
         {/* Productos - título y separación para mayor coherencia visual */}
         <View
