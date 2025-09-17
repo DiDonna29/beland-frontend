@@ -49,12 +49,42 @@ class AddressService {
         method: "GET",
       });
 
-      // El backend puede retornar array directamente o objeto con array
-      const addresses = Array.isArray(response)
-        ? response
-        : response.addresses || [];
+      // El backend puede retornar el array directamente o dentro de varias propiedades
+      // Soportamos: response (array), response.addresses, response.data, response.items, response.results
+      let addressesRaw: any = [];
+      if (Array.isArray(response)) {
+        // Algunos backends devuelven [items, meta] -> p.ej. [ [addresses], total ]
+        if (Array.isArray(response[0])) {
+          addressesRaw = response[0];
+        } else {
+          addressesRaw = response;
+        }
+      } else if (Array.isArray((response as any).addresses)) {
+        addressesRaw = (response as any).addresses;
+      } else if (Array.isArray((response as any).data)) {
+        addressesRaw = (response as any).data;
+      } else if (Array.isArray((response as any).items)) {
+        addressesRaw = (response as any).items;
+      } else if (Array.isArray((response as any).results)) {
+        addressesRaw = (response as any).results;
+      } else if (response && Array.isArray((response as any).data?.items)) {
+        addressesRaw = (response as any).data.items;
+      } else if (response && Array.isArray((response as any).data?.results)) {
+        addressesRaw = (response as any).data.results;
+      } else {
+        // Fallback: try to pick any array-valued prop
+        const anyArrayProp = Object.keys(response || {}).find((k) =>
+          Array.isArray((response as any)[k])
+        );
+        addressesRaw = anyArrayProp ? (response as any)[anyArrayProp] : [];
+      }
 
-      return addresses.map(this.mapAddressResponse);
+      // Aplanar cualquier anidamiento accidental y devolver
+      const flattened = Array.isArray(addressesRaw)
+        ? (addressesRaw as any[]).flat(Infinity)
+        : [];
+
+      return (flattened || []).map(this.mapAddressResponse);
     } catch (error) {
       console.error("Error getting user addresses:", error);
       throw error;
@@ -119,19 +149,6 @@ class AddressService {
     }
   }
 
-  // Marcar dirección como predeterminada
-  async setDefaultAddress(addressId: string): Promise<UserAddress> {
-    try {
-      const response = await apiRequest(`/user-address/${addressId}/default`, {
-        method: "PUT",
-      });
-      return this.mapAddressResponse(response);
-    } catch (error) {
-      console.error("Error setting default address:", error);
-      throw error;
-    }
-  }
-
   // Helper para mapear respuesta del backend
   private mapAddressResponse(response: any): UserAddress {
     return {
@@ -181,6 +198,19 @@ class AddressService {
     }
 
     return errors;
+  }
+
+  // Marcar dirección como predeterminada
+  async setDefaultAddress(addressId: string): Promise<UserAddress> {
+    try {
+      const response = await apiRequest(`/user-address/${addressId}/default`, {
+        method: "PUT",
+      });
+      return this.mapAddressResponse(response);
+    } catch (error) {
+      console.error("Error setting default address:", error);
+      throw error;
+    }
   }
 }
 

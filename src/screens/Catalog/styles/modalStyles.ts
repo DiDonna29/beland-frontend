@@ -6,12 +6,11 @@ export const modalStyles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "flex-end" as const,
+    justifyContent: "center" as const,
   },
   modalContent: {
     backgroundColor: "white",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderRadius: 20,
     paddingTop: 20,
     paddingHorizontal: 20,
     paddingBottom: 34, // Para el safe area en iPhone
@@ -218,8 +217,7 @@ export const modalStyles = StyleSheet.create({
   // Larger modal content for forms
   modalContentLarge: {
     backgroundColor: "white",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderRadius: 20,
     paddingTop: 20,
     paddingHorizontal: 20,
     paddingBottom: 34,

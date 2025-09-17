@@ -38,6 +38,7 @@ export const AddressForm: React.FC<AddressFormProps> = ({
       zipCode: "",
       country: "Ecuador",
       additionalInfo: "",
+      phone: "",
     }
   );
 
@@ -154,6 +155,13 @@ export const AddressForm: React.FC<AddressFormProps> = ({
         if (!value.trim()) return "El país es requerido";
         return null;
 
+      case "phone":
+        if (!value.trim()) return "El teléfono es requerido";
+        // Simple phone validation: mínimo 7 dígitos
+        const digits = value.replace(/\D/g, "");
+        if (digits.length < 7) return "Ingresa un teléfono válido";
+        return null;
+
       default:
         return null;
     }
@@ -171,6 +179,7 @@ export const AddressForm: React.FC<AddressFormProps> = ({
       "state",
       "zipCode",
       "country",
+      "phone",
     ];
 
     requiredFields.forEach((fieldKey) => {
@@ -192,6 +201,7 @@ export const AddressForm: React.FC<AddressFormProps> = ({
       state: true,
       zipCode: true,
       country: true,
+      phone: true,
     }));
 
     setErrors(newErrors);
@@ -562,6 +572,40 @@ export const AddressForm: React.FC<AddressFormProps> = ({
               </View>
 
               {/* Additional Info */}
+              {/* Phone number */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>
+                  Teléfono <Text style={styles.required}>*</Text>
+                </Text>
+                <View
+                  style={[
+                    styles.inputContainer,
+                    errors.phone && touched.phone && styles.inputError,
+                  ]}
+                >
+                  <MaterialCommunityIcons
+                    name="phone"
+                    size={20}
+                    color="#666"
+                    style={styles.inputIcon}
+                  />
+                  <TextInput
+                    style={styles.input}
+                    value={String(address.phone || "")}
+                    onChangeText={(value) => updateAddress("phone", value)}
+                    onBlur={() => handleBlur("phone")}
+                    placeholder="Ej: +593 98 765 4321"
+                    placeholderTextColor="#999"
+                    keyboardType={
+                      Platform.OS === "web" ? "default" : "phone-pad"
+                    }
+                  />
+                </View>
+                {errors.phone && touched.phone && (
+                  <Text style={styles.errorText}>{errors.phone}</Text>
+                )}
+              </View>
+
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Información adicional</Text>
                 <View style={styles.inputContainer}>

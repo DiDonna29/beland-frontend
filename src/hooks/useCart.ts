@@ -17,11 +17,25 @@ export const useCart = () => {
       setLoading(true);
       setError(null);
 
-      // Intentar obtener carrito existente del usuario
-      // Si no existe, el backend puede crear uno automáticamente
-      // o podemos crear uno nuevo aquí
-      const userCart = await cartService.createCart();
-      setCart(userCart);
+      // Intentar obtener carrito existente del usuario primero para evitar
+      // condiciones de carrera que resulten en errores 500 por duplicados.
+      try {
+        const existing = await cartService.getUserCart();
+        if (existing) {
+          setCart(existing);
+        } else {
+          const created = await cartService.createCart();
+          setCart(created);
+        }
+      } catch (getErr) {
+        // Si GET falla (p. ej. 404/no cart), intentar crear uno nuevo
+        try {
+          const created = await cartService.createCart();
+          setCart(created);
+        } catch (createErr) {
+          throw createErr;
+        }
+      }
     } catch (err: any) {
       console.error("Error initializing cart:", err);
       setError(err.message || "Error al inicializar carrito");
