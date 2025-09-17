@@ -54,7 +54,92 @@ class OrderService {
         }
       );
 
-      return this.mapOrderResponse(response);
+      // Diagnostic: show raw response from backend for debugging delivery address
+      try {
+        console.log(
+          "[OrderService] Raw createOrderFromCart response:",
+          response
+        );
+      } catch (e) {}
+
+      // Try to map the initial response immediately so we can log/return it if GET fails
+      let mappedInitial: any = null;
+      try {
+        mappedInitial = this.mapOrderResponse(response);
+        try {
+          console.log(
+            "[OrderService] Mapped initial response (before GET):",
+            mappedInitial
+          );
+        } catch (e) {}
+      } catch (mapErr) {
+        try {
+          console.warn(
+            "[OrderService] Could not map initial response (before GET):",
+            mapErr
+          );
+        } catch (e) {}
+        mappedInitial = null;
+      }
+
+      // Si la respuesta no incluye la dirección de entrega, intentar obtener la orden completa
+      if (
+        response &&
+        !response.delivery_address &&
+        !response.deliveryAddress &&
+        response.id
+      ) {
+        try {
+          const full = await apiRequest(`/orders/${response.id}`, {
+            method: "GET",
+          });
+          try {
+            console.log(
+              "[OrderService] Raw GET /orders/:id response after create:",
+              full
+            );
+          } catch (e) {}
+          return this.mapOrderResponse(full);
+        } catch (e) {
+          // Log details from the GET failure if available
+          console.warn(
+            "⚠️ OrderService: could not fetch full order after creation, returning initial response",
+            e
+          );
+          try {
+            // if the thrown error has a body/status, print it
+            console.warn(
+              "[OrderService] GET /orders/:id error details:",
+              (e as any)?.body || (e as any)?.message || e
+            );
+          } catch (ee) {}
+          // If we have the mapped initial response, return it and mark that GET failed
+          if (mappedInitial) {
+            try {
+              (mappedInitial as any).__get_failed = true;
+            } catch {}
+            try {
+              console.log(
+                "[OrderService] Returning mapped initial response due to GET failure:",
+                mappedInitial
+              );
+            } catch (ee) {}
+            return mappedInitial;
+          }
+        }
+      }
+
+      // If we reach here, either GET was unnecessary or it failed and we couldn't map;
+      // prefer mappedInitial if available, otherwise map now (this may throw).
+      if (mappedInitial) return mappedInitial;
+      const mapped = this.mapOrderResponse(response);
+      try {
+        console.log(
+          "[OrderService] Mapped order from createOrderFromCart:",
+          mapped
+        );
+      } catch (e) {}
+      return mapped;
     } catch (error) {
       console.error("❌ OrderService: Error creating order from cart:", error);
 
@@ -71,11 +156,7 @@ class OrderService {
   // Crear orden directa (sin carrito)
   async createOrder(orderData: CreateOrderRequest): Promise<Order> {
     try {
-      console.log(
-        "🌐 OrderService: Creating direct order with data:",
-        orderData
-      );
-      console.log("🌐 OrderService: Calling endpoint: POST /orders");
+      // Debug logs removed
 
       const response = await apiRequest("/orders", {
         method: "POST",
@@ -83,8 +164,76 @@ class OrderService {
         body: JSON.stringify(orderData),
       });
 
-      console.log("✅ OrderService: Response received:", response);
-      return this.mapOrderResponse(response);
+      // Diagnostic: raw response when creating order directly
+      try {
+        console.log("[OrderService] Raw createOrder response:", response);
+      } catch (e) {}
+
+      // Try to map initial response immediately for diagnostics and fallback
+      let mappedInitialDirect: any = null;
+      try {
+        mappedInitialDirect = this.mapOrderResponse(response);
+        try {
+          console.log(
+            "[OrderService] Mapped initial createOrder response:",
+            mappedInitialDirect
+          );
+        } catch (e) {}
+      } catch (mapErr) {
+        try {
+          console.warn(
+            "[OrderService] Could not map initial createOrder response:",
+            mapErr
+          );
+        } catch (e) {}
+        mappedInitialDirect = null;
+      }
+
+      if (
+        response &&
+        !response.delivery_address &&
+        !response.deliveryAddress &&
+        response.id
+      ) {
+        try {
+          const full = await apiRequest(`/orders/${response.id}`, {
+            method: "GET",
+          });
+          try {
+            console.log(
+              "[OrderService] Raw GET /orders/:id response after create (direct):",
+              full
+            );
+          } catch (e) {}
+          return this.mapOrderResponse(full);
+        } catch (e) {
+          console.warn("⚠️ OrderService: GET after createOrder failed:", e);
+          try {
+            console.warn(
+              "[OrderService] GET /orders/:id error details:",
+              (e as any)?.body || (e as any)?.message || e
+            );
+          } catch (ee) {}
+          if (mappedInitialDirect) {
+            try {
+              (mappedInitialDirect as any).__get_failed = true;
+            } catch {}
+            try {
+              console.log(
+                "[OrderService] Returning mapped initial createOrder response due to GET failure:",
+                mappedInitialDirect
+              );
+            } catch (ee) {}
+            return mappedInitialDirect;
+          }
+        }
+      }
+
+      const mapped = this.mapOrderResponse(response);
+      try {
+        console.log("[OrderService] Mapped order from createOrder:", mapped);
+      } catch (e) {}
+      return mapped;
     } catch (error) {
       console.error("❌ OrderService: Error creating order:", error);
 

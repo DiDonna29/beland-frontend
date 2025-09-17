@@ -399,130 +399,6 @@ export const CatalogScreen = () => {
     }
   }, [isAuthenticated]);
 
-  // Refs & state to control carousels (community and products)
-  const communityScrollRef = useRef<ScrollView | null>(null);
-  const communityX = useRef(0);
-  const communityContentWidth = useRef(0);
-  const communityLayoutWidth = useRef(0);
-  const [communityCanLeft, setCommunityCanLeft] = useState(false);
-  const [communityCanRight, setCommunityCanRight] = useState(false);
-
-  const productsScrollRef = useRef<ScrollView | null>(null);
-  const productsX = useRef(0);
-  const productsContentWidth = useRef(0);
-  const productsLayoutWidth = useRef(0);
-  const [productsCanLeft, setProductsCanLeft] = useState(false);
-  const [productsCanRight, setProductsCanRight] = useState(false);
-
-  const updateCommunityNav = () => {
-    const x = communityX.current || 0;
-    const cw = communityContentWidth.current || 0;
-    const lw = communityLayoutWidth.current || 0;
-    setCommunityCanLeft(x > 10);
-    setCommunityCanRight(cw - lw - x > 10);
-  };
-
-  const updateProductsNav = () => {
-    const x = productsX.current || 0;
-    const cw = productsContentWidth.current || 0;
-    const lw = productsLayoutWidth.current || 0;
-    setProductsCanLeft(x > 10);
-    setProductsCanRight(cw - lw - x > 10);
-  };
-
-  const scrollCommunityBy = (dir: number) => {
-    const step = Math.max(
-      200,
-      Math.floor((communityLayoutWidth.current || 600) * 0.8)
-    );
-    const maxOffset = Math.max(
-      0,
-      (communityContentWidth.current || 0) - (communityLayoutWidth.current || 0)
-    );
-    const desired = (communityX.current || 0) + dir * step;
-    const target = Math.max(0, Math.min(maxOffset, desired));
-
-    const ref = communityScrollRef.current as any;
-    if (!ref) return;
-
-    try {
-      // RN ScrollView API
-      if (typeof ref.scrollTo === "function") {
-        ref.scrollTo({ x: target, y: 0, animated: true });
-      } else if (typeof ref.scrollToOffset === "function") {
-        ref.scrollToOffset({ offset: target, animated: true });
-      } else {
-        // Web fallback: try native DOM node
-        const node = (ref as any).getNativeScrollRef?.() || ref;
-        if (node && typeof node.scrollTo === "function") {
-          try {
-            node.scrollTo({ left: target, top: 0, behavior: "smooth" });
-          } catch (err) {
-            node.scrollLeft = target;
-          }
-        }
-      }
-    } catch (err) {
-      try {
-        const node = (ref as any).getScrollableNode
-          ? ref.getScrollableNode()
-          : ref;
-        if (node && typeof node.scrollLeft !== "undefined")
-          node.scrollLeft = target;
-      } catch (e) {
-        console.warn("No se pudo desplazar comunidad:", e);
-      }
-    }
-
-    // small timeout to let scroll update
-    setTimeout(() => updateCommunityNav(), 250);
-  };
-
-  const scrollProductsBy = (dir: number) => {
-    const step = Math.max(
-      200,
-      Math.floor((productsLayoutWidth.current || 600) * 0.8)
-    );
-    const maxOffset = Math.max(
-      0,
-      (productsContentWidth.current || 0) - (productsLayoutWidth.current || 0)
-    );
-    const desired = (productsX.current || 0) + dir * step;
-    const target = Math.max(0, Math.min(maxOffset, desired));
-
-    const ref = productsScrollRef.current as any;
-    if (!ref) return;
-
-    try {
-      if (typeof ref.scrollTo === "function") {
-        ref.scrollTo({ x: target, y: 0, animated: true });
-      } else if (typeof ref.scrollToOffset === "function") {
-        ref.scrollToOffset({ offset: target, animated: true });
-      } else {
-        const node = (ref as any).getNativeScrollRef?.() || ref;
-        if (node && typeof node.scrollTo === "function") {
-          try {
-            node.scrollTo({ left: target, top: 0, behavior: "smooth" });
-          } catch (err) {
-            node.scrollLeft = target;
-          }
-        }
-      }
-    } catch (err) {
-      try {
-        const node = (ref as any).getScrollableNode
-          ? ref.getScrollableNode()
-          : ref;
-        if (node && typeof node.scrollLeft !== "undefined")
-          node.scrollLeft = target;
-      } catch (e) {
-        console.warn("No se pudo desplazar productos:", e);
-      }
-    }
-
-    setTimeout(() => updateProductsNav(), 250);
-  };
-
   // Componente local para la sección Comunidad en el Catálogo
   const CatalogCommunitySection: React.FC = () => {
     const formatBeCoins = (n: number) => {
@@ -660,92 +536,20 @@ export const CatalogScreen = () => {
           </Text>
         </View>
 
-        {communityLoading ? (
-          <ActivityIndicator color="#FF6B35" />
-        ) : communityResources.length === 0 ? (
-          <View style={{ padding: 24, alignItems: "center" }}>
-            <Text style={{ color: "#666" }}>No hay recursos disponibles</Text>
-          </View>
-        ) : (
-          <View>
-            <ScrollView
-              ref={(ref) => {
-                communityScrollRef.current = ref;
-              }}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingLeft: 16, paddingRight: 24 }}
-              onScroll={(e) => {
-                communityX.current = e.nativeEvent.contentOffset.x;
-                updateCommunityNav();
-              }}
-              scrollEventThrottle={50}
-              onContentSizeChange={(contentWidth, contentHeight) => {
-                communityContentWidth.current = contentWidth || 0;
-                updateCommunityNav();
-              }}
-              onLayout={(e) => {
-                communityLayoutWidth.current = e.nativeEvent.layout.width;
-                updateCommunityNav();
-              }}
-            >
-              {communityResources.map((r: any) => (
-                <View key={r.id} style={{ marginRight: 16 }}>
-                  <ResourcePreviewCard resource={r} />
-                </View>
-              ))}
-            </ScrollView>
-
-            {/* Flechas para navegar comunidad */}
-            {communityCanLeft && (
-              <TouchableOpacity
-                accessibilityLabel="Anterior comunidad"
-                accessibilityRole="button"
-                style={{
-                  position: "absolute",
-                  left: 4,
-                  top: "40%",
-                  zIndex: 10,
-                  backgroundColor: "#FF6B35",
-                  padding: 8,
-                  borderRadius: 22,
-                  elevation: 5,
-                }}
-                onPress={() => scrollCommunityBy(-1)}
-              >
-                <Text
-                  style={{ fontSize: 18, color: "#fff", fontWeight: "700" }}
-                >
-                  ‹
-                </Text>
-              </TouchableOpacity>
+            {communityLoading ? (
+              <ActivityIndicator color="#FF6B35" />
+            ) : communityResources.length === 0 ? (
+              <View style={{ padding: 24, alignItems: "center" }}>
+                <Text style={{ color: "#666" }}>No hay recursos disponibles</Text>
+              </View>
+            ) : (
+              // Reutilizar ResourcesGrid para mantener el mismo layout que CommunityScreen
+              <ResourcesGrid
+                resources={communityResources}
+                loading={communityLoading}
+                onPurchase={(r: any) => handleCommunityPurchasePress(r)}
+              />
             )}
-
-            {communityCanRight && (
-              <TouchableOpacity
-                accessibilityLabel="Siguiente comunidad"
-                accessibilityRole="button"
-                style={{
-                  position: "absolute",
-                  right: 4,
-                  top: "40%",
-                  zIndex: 10,
-                  backgroundColor: "#FF6B35",
-                  padding: 8,
-                  borderRadius: 22,
-                  elevation: 5,
-                }}
-                onPress={() => scrollCommunityBy(1)}
-              >
-                <Text
-                  style={{ fontSize: 18, color: "#fff", fontWeight: "700" }}
-                >
-                  ›
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
       </View>
     );
   };
@@ -819,8 +623,7 @@ export const CatalogScreen = () => {
         // para no perder productos que el usuario ya haya agregado localmente
         await performCartSync("merge");
       } catch (error) {
-        console.error("Error syncing cart:", error);
-        // No mostrar error al usuario ya que es una operación en segundo plano
+        // sync cart failed
       }
     };
 
@@ -838,10 +641,6 @@ export const CatalogScreen = () => {
 
     try {
       setAddingProductId(product.id);
-      console.log(
-        "🛒 CatalogScreen: Adding product to cart and server:",
-        product.name
-      );
 
       const success = await addProductToServer({
         id: product.id,
@@ -852,12 +651,8 @@ export const CatalogScreen = () => {
       });
 
       if (success) {
-        console.log("✅ CatalogScreen: Product added successfully to server");
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } else {
-        console.log(
-          "⚠️ CatalogScreen: Product added locally but failed on server"
-        );
         // Fallback local add
         addProductToCart({
           id: product.id,
@@ -1062,10 +857,6 @@ export const CatalogScreen = () => {
 
             try {
               // Mostrar loading si es necesario
-              console.log(
-                "🛒 Procesando checkout con productos:",
-                cartProducts
-              );
 
               // Aquí es donde ahora procesamos el carrito al backend
               // Pero por ahora, como aún no tienes la pantalla de direcciones,
@@ -1101,7 +892,6 @@ export const CatalogScreen = () => {
         onClose={closeDeliveryModal}
         onOrderCreated={(orderId: string) => {
           // Navigate to Orders tab to see the created order
-          console.log("Order created:", orderId);
           (navigation as any).navigate("Orders");
         }}
       />

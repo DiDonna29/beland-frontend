@@ -12,6 +12,12 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { colors } from "../../../styles/colors";
 import { modalStyles } from "../styles";
 import { AddressForm } from "./AddressForm";
+import {
+  addressService,
+  CreateAddressRequest,
+} from "../../../services/addressService";
+import { cartService, getUserCartId } from "../../../services/cartService";
+import { apiRequest } from "../../../services/api";
 import { useOrdersStoreAPI } from "../../../stores/useOrdersStoreAPI";
 import { useCartStore, CartProduct } from "../../../stores/useCartStore";
 import { useCustomAlert } from "../../../hooks/useCustomAlert";
@@ -40,9 +46,30 @@ export const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
 
   const { createOrder, isLoading } = useOrdersStoreAPI();
   const { products: cartProducts, clearCart } = useCartStore();
+  const [userAddresses, setUserAddresses] = React.useState<any[]>([]);
+  const [loadingAddresses, setLoadingAddresses] = React.useState(false);
+  const [addingNewAddress, setAddingNewAddress] = React.useState(false);
   const { showAlert, alertConfig, showCustomAlert, hideAlert } =
     useCustomAlert();
   const { requireAuth } = useAuth();
+
+  // Cargar direcciones de usuario cuando el modal se abre
+  React.useEffect(() => {
+    if (!visible) return;
+    (async () => {
+      setLoadingAddresses(true);
+      try {
+        const list = await addressService.getUserAddresses();
+        setUserAddresses(list || []);
+      } catch (e) {
+        // failed to load user addresses
+        setUserAddresses([]);
+        setUserAddresses([]);
+      } finally {
+        setLoadingAddresses(false);
+      }
+    })();
+  }, [visible]);
 
   // Reset state when modal closes
   React.useEffect(() => {
@@ -55,7 +82,7 @@ export const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
   const convertCartToOrderItems = (
     cartProducts: CartProduct[]
   ): OrderItem[] => {
-    console.log("🔄 Converting cart products to order items:", cartProducts);
+    // converting cart products to order items
 
     const orderItems = cartProducts.map((product) => {
       const orderItem: OrderItem = {
@@ -68,28 +95,81 @@ export const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
         subtotal: product.price * product.quantity,
       };
 
-      console.log(
-        `📦 Converted product: ${product.name} to order item:`,
-        orderItem
-      );
+      // product converted to order item
       return orderItem;
     });
 
-    console.log("✅ Final order items:", orderItems);
+    // final order items prepared
     return orderItems;
   };
 
   const handleAddressSubmit = (address: DeliveryAddress) => {
+    // Cuando el AddressForm envía, si estamos en modo 'agregar nueva dirección'
+    // primero guardamos la dirección en el endpoint /user-address y luego
+    // procedemos a crear la orden con la dirección resultante.
+    if (addingNewAddress) {
+      (async () => {
+        try {
+          // Mapear DeliveryAddress -> CreateAddressRequest
+          const payload: CreateAddressRequest = {
+            addressLine1: address.street,
+            addressLine2: address.additionalInfo || undefined,
+            city: address.city,
+            state: address.state || undefined,
+            country: address.country,
+            postalCode: address.zipCode || undefined,
+            latitude: address.latitude,
+            longitude: address.longitude,
+            isDefault: true,
+          };
+
+          const created = await addressService.createAddress(payload);
+          // Añadir a la lista local y usarla
+          setUserAddresses((prev) => [created, ...prev]);
+
+          // Mapear el UserAddress creado a DeliveryAddress para la orden
+          const toOrderAddress: DeliveryAddress = {
+            street: created.addressLine1,
+            city: created.city,
+            state: created.state || "",
+            zipCode: created.postalCode || "",
+            country: created.country,
+            additionalInfo: created.addressLine2 || "",
+            latitude: created.latitude,
+            longitude: created.longitude,
+          };
+
+          // Si el formulario incluía phone, preservarlo
+          if ((address as any).phone)
+            (toOrderAddress as any).phone = (address as any).phone;
+
+          setAddingNewAddress(false);
+          // Pasar el id de la dirección creada para actualizar el carrito antes de crear la orden
+          handleCreateOrder(toOrderAddress, created.id);
+        } catch (e: any) {
+          console.error("Error creando dirección de usuario:", e);
+          Alert.alert(
+            "Error",
+            "No se pudo guardar la dirección. Intenta de nuevo."
+          );
+        }
+      })();
+      return;
+    }
+
+    // Si no estamos en modo 'agregar nueva', crear la orden directamente
     handleCreateOrder(address);
   };
 
-  const handleCreateOrder = async (deliveryAddress: DeliveryAddress) => {
+  const handleCreateOrder = async (
+    deliveryAddress: DeliveryAddress,
+    addressId?: string
+  ) => {
     try {
-      console.log("🔵 Starting order creation process...");
+      // starting order creation process
       setCurrentStep("processing");
 
       if (cartProducts.length === 0) {
-        console.log("❌ Cart is empty");
         Alert.alert(
           "Carrito vacío",
           "No hay productos en el carrito para procesar."
@@ -99,9 +179,7 @@ export const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
         return;
       }
 
-      console.log("📦 Cart products:", cartProducts);
       const orderItems = convertCartToOrderItems(cartProducts);
-      console.log("📝 Order items:", orderItems);
 
       const orderRequest: CreateOrderRequest = {
         items: orderItems,
@@ -111,24 +189,175 @@ export const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
         notes: "Orden para envío a domicilio",
       };
 
-      console.log("📋 Order request:", orderRequest);
-      console.log("🔄 Calling createOrder...");
+      // Antes de crear la orden, actualizar el carrito con la dirección seleccionada
+      if (addressId) {
+        try {
+          const cartId = await getUserCartId();
+          // Diagnostic: log that we're updating cart with address
+          console.log(
+            "[OrderDeliveryModal] Updating cart with addressId:",
+            addressId,
+            "cartId:",
+            cartId
+          );
+
+          // updating cart with address before order
+
+          // PUT /carts/address/{cartId}?address_id={addressId}
+          await apiRequest(`/carts/address/${cartId}?address_id=${addressId}`, {
+            method: "PUT",
+          });
+        } catch (e) {
+          console.error("❌ Failed to update cart with address:", e);
+          Alert.alert(
+            "Error",
+            "No se pudo actualizar el carrito con la dirección seleccionada. Intenta de nuevo."
+          );
+          setCurrentStep("address_form");
+          return;
+        }
+      }
 
       // Usar requireAuth para proteger la creación de la orden
       await requireAuth(async () => {
-        const newOrder = await createOrder(orderRequest);
-        console.log("✅ Order created successfully:", newOrder);
+        // Diagnostic: log the orderRequest being sent
+        console.log(
+          "[OrderDeliveryModal] Creating order with request:",
+          orderRequest,
+          "addressId:",
+          addressId
+        );
+
+        let newOrder = await createOrder(orderRequest);
+
+        // Diagnostic: log the order returned by createOrder
+        console.log("[OrderDeliveryModal] createOrder returned:", newOrder);
+        // Diagnostic: log available userAddresses and addressId
+        try {
+          console.log("[OrderDeliveryModal] userAddresses:", userAddresses);
+          console.log("[OrderDeliveryModal] selected addressId:", addressId);
+        } catch (e) {}
+
+        // If backend didn't return a deliveryAddress (or GET failed), force-attach
+        // the address we used to create the order so the UI can display it.
+        try {
+          const hasDelivery =
+            newOrder &&
+            ((newOrder as any).deliveryAddress ||
+              (newOrder as any).delivery_address);
+
+          const shouldForceAttach =
+            !!(newOrder as any).__get_failed || !hasDelivery;
+          console.log(
+            "[OrderDeliveryModal] newOrder hasDelivery:",
+            !!hasDelivery,
+            "__get_failed:",
+            !!(newOrder as any).__get_failed,
+            "shouldForceAttach:",
+            shouldForceAttach
+          );
+
+          if (shouldForceAttach) {
+            // Prefer address selected by id
+            let fallbackAddress: any = undefined;
+            if (addressId) {
+              fallbackAddress = userAddresses.find((a) => a.id === addressId);
+            }
+
+            // If not found by id, use the deliveryAddress object passed to this function
+            if (!fallbackAddress && deliveryAddress) {
+              fallbackAddress = {
+                addressLine1: deliveryAddress.street,
+                addressLine2: deliveryAddress.additionalInfo || "",
+                city: deliveryAddress.city,
+                state: (deliveryAddress as any).state || "",
+                postalCode: (deliveryAddress as any).zipCode || "",
+                country: deliveryAddress.country,
+                latitude: (deliveryAddress as any).latitude,
+                longitude: (deliveryAddress as any).longitude,
+                phone: (deliveryAddress as any).phone || undefined,
+              };
+            }
+
+            // As final fallback, if orderRequest.deliveryAddress exists, use it (force attach)
+            if (!fallbackAddress && (orderRequest as any).deliveryAddress) {
+              const od = (orderRequest as any).deliveryAddress;
+              fallbackAddress = {
+                addressLine1: od.street,
+                addressLine2: od.additionalInfo || "",
+                city: od.city,
+                state: od.state || "",
+                postalCode: od.zipCode || "",
+                country: od.country,
+                latitude: od.latitude,
+                longitude: od.longitude,
+                phone: od.phone || undefined,
+              };
+            }
+
+            if (fallbackAddress) {
+              try {
+                console.log(
+                  "[OrderDeliveryModal] fallbackAddress chosen:",
+                  fallbackAddress
+                );
+              } catch (e) {}
+
+              const normalized = {
+                street:
+                  fallbackAddress.addressLine1 ||
+                  fallbackAddress.address_line_1 ||
+                  fallbackAddress.street ||
+                  "",
+                additionalInfo:
+                  fallbackAddress.addressLine2 ||
+                  fallbackAddress.address_line_2 ||
+                  fallbackAddress.additionalInfo ||
+                  "",
+                city: fallbackAddress.city || fallbackAddress.town || "",
+                state: fallbackAddress.state || fallbackAddress.province || "",
+                zipCode:
+                  fallbackAddress.postalCode ||
+                  fallbackAddress.postal_code ||
+                  fallbackAddress.zip ||
+                  "",
+                country: fallbackAddress.country || "",
+                latitude: fallbackAddress.latitude,
+                longitude: fallbackAddress.longitude,
+                phone: fallbackAddress.phone,
+              };
+
+              const patched: any = { ...(newOrder as any) };
+              patched.deliveryAddress = normalized;
+              patched.delivery_address = normalized;
+              try {
+                patched.__attached_fallback = true;
+                console.log(
+                  "[OrderDeliveryModal] Forced attach of deliveryAddress to newOrder (__attached_fallback = true)"
+                );
+              } catch (e) {}
+              newOrder = patched as any;
+            } else {
+              console.log(
+                "[OrderDeliveryModal] shouldForceAttach true but no fallbackAddress available to attach"
+              );
+            }
+          }
+        } catch (attachErr) {
+          console.error(
+            "[OrderDeliveryModal] Failed to attach fallback deliveryAddress:",
+            attachErr
+          );
+        }
 
         // Clear the cart after successful order creation
         clearCart();
-        console.log("🧹 Cart cleared");
 
         // Close modal first, then show success alert
         onClose();
 
         // Show success message using CustomAlert after modal closes
         setTimeout(() => {
-          console.log("🚀 About to show success CustomAlert...");
           showCustomAlert(
             "¡Orden creada exitosamente!",
             `Tu orden ${newOrder.id.slice(
@@ -138,7 +367,6 @@ export const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
             )}`,
             "success"
           );
-          console.log("✅ CustomAlert shown successfully");
         }, 300); // Small delay to ensure modal is fully closed
       });
     } catch (error) {
@@ -168,10 +396,124 @@ export const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
   const renderAddressForm = () => (
     <AddressForm
       onSubmit={handleAddressSubmit}
-      onCancel={handleCancel}
+      onCancel={() => {
+        // volver a la lista de direcciones en lugar de cerrar el modal
+        setAddingNewAddress(false);
+      }}
       isLoading={currentStep === "processing"}
     />
   );
+
+  const renderAddressCards = () => {
+    if (loadingAddresses) {
+      return (
+        <View style={{ padding: 20 }}>
+          <ActivityIndicator color={colors.belandOrange} />
+        </View>
+      );
+    }
+
+    return (
+      <View>
+        <View style={{ paddingHorizontal: 12, paddingBottom: 12 }}>
+          <Text style={{ fontSize: 18, fontWeight: "700", color: "#333" }}>
+            Selecciona una dirección
+          </Text>
+        </View>
+
+        {userAddresses.length === 0 ? (
+          <View style={{ padding: 20 }}>
+            <Text style={{ color: "#666" }}>
+              No tienes direcciones guardadas. Puedes agregar una nueva.
+            </Text>
+          </View>
+        ) : (
+          userAddresses.map((a, idx) => {
+            const primary =
+              a.addressLine1 || a.address_line_1 || a.street || a.address || "";
+            const secondary =
+              a.addressLine2 || a.address_line_2 || a.additionalInfo || "";
+            const alias = a.alias || a.label || a.name || "";
+            const city = a.city || a.town || "";
+            const state = a.state || a.province || "";
+            const postal = a.postalCode || a.postal_code || a.zip || "";
+
+            let line1 = "";
+            if (alias) line1 = alias;
+            else if (primary) line1 = primary;
+            else {
+              const parts = [secondary, city, state, postal].filter(Boolean);
+              line1 = parts.join(", ");
+            }
+
+            if (!line1) {
+              const compact = [a.id, a.user_id, a.address, a.alias]
+                .filter(Boolean)
+                .join(" • ");
+              line1 = compact || "(sin dirección)";
+            }
+
+            return (
+              <View
+                key={a.id || `${a.user_id || "addr"}-${idx}`}
+                style={{
+                  backgroundColor: "white",
+                  marginHorizontal: 12,
+                  marginBottom: 12,
+                  borderRadius: 10,
+                  padding: 12,
+                  elevation: 2,
+                }}
+              >
+                <Text style={{ fontWeight: "700" }}>{line1}</Text>
+                {secondary ? (
+                  <Text style={{ color: "#666" }}>{secondary}</Text>
+                ) : null}
+                <Text style={{ color: "#666", marginTop: 6 }}>
+                  {city}
+                  {state ? `, ${state}` : ""}
+                  {postal ? ` • ${postal}` : ""}
+                </Text>
+
+                <View style={{ flexDirection: "row", marginTop: 8, gap: 8 }}>
+                  <TouchableOpacity
+                    style={[modalStyles.cancelButton, { flex: 1 }]}
+                    onPress={() => {
+                      const toOrderAddress: DeliveryAddress = {
+                        street: a.addressLine1,
+                        city: a.city,
+                        state: a.state || "",
+                        zipCode: a.postalCode || "",
+                        country: a.country,
+                        additionalInfo: a.addressLine2 || "",
+                        latitude: a.latitude,
+                        longitude: a.longitude,
+                      };
+                      // Pasar el id de la dirección para que se actualice el carrito antes de crear la orden
+                      handleCreateOrder(toOrderAddress, a.id);
+                    }}
+                  >
+                    <Text style={modalStyles.cancelButtonText}>Usar esta</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            );
+          })
+        )}
+
+        <View style={{ padding: 12 }}>
+          <TouchableOpacity
+            style={modalStyles.continueGroupButton}
+            onPress={() => setAddingNewAddress(true)}
+          >
+            <Text style={modalStyles.continueGroupButtonText}>
+              Agregar nueva dirección
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
 
   const renderProcessing = () => (
     <View style={modalStyles.processingContainer}>
@@ -225,7 +567,50 @@ export const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
         <>
           {visible &&
             (currentStep === "address_form" ? (
-              renderAddressForm()
+              addingNewAddress ? (
+                renderAddressForm()
+              ) : (
+                <View
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: "rgba(0,0,0,0.45)",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    zIndex: 1000,
+                  }}
+                >
+                  <View
+                    style={[
+                      modalStyles.modalContent,
+                      modalStyles.modalContentLarge,
+                      { maxWidth: 900, width: "80%" },
+                    ]}
+                  >
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: "flex-end",
+                      }}
+                    >
+                      <TouchableOpacity
+                        onPress={handleCancel}
+                        style={{ padding: 6 }}
+                      >
+                        <Text
+                          style={{ fontSize: 18, color: colors.textSecondary }}
+                        >
+                          ×
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                    {renderAddressCards()}
+                  </View>
+                </View>
+              )
             ) : (
               // Simple processing overlay for web
               <View
@@ -268,7 +653,8 @@ export const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
                 currentStep === "address_form" && modalStyles.modalContentLarge,
               ]}
             >
-              {currentStep === "address_form" && renderAddressForm()}
+              {currentStep === "address_form" &&
+                (addingNewAddress ? renderAddressForm() : renderAddressCards())}
               {currentStep === "processing" && renderProcessing()}
             </View>
           </View>
@@ -284,12 +670,10 @@ export const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
         primaryButton={{
           text: "Ver mis órdenes",
           onPress: () => {
-            console.log("🎯 Ver mis órdenes pressed");
             hideAlert();
             // Use setTimeout to ensure alert closes before opening orders modal
             setTimeout(() => {
               if (onOrderCreated) {
-                console.log("🔄 Calling onOrderCreated");
                 onOrderCreated("latest-order");
               }
             }, 100);
@@ -298,7 +682,6 @@ export const OrderDeliveryModal: React.FC<OrderDeliveryModalProps> = ({
         secondaryButton={{
           text: "Seguir comprando",
           onPress: () => {
-            console.log("🛒 Seguir comprando pressed");
             hideAlert();
           },
         }}

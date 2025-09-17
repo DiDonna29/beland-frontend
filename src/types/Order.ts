@@ -29,6 +29,7 @@ export interface DeliveryAddress {
   additionalInfo?: string; // Apartamento, referencias, etc.
   latitude?: number;
   longitude?: number;
+  phone?: string; // Número de teléfono del destinatario
 }
 
 export interface Order {

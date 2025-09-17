@@ -13,16 +13,14 @@ export interface LocationResult {
 // Función para detectar ubicación actual con GPS
 export const detectCurrentLocation = async (): Promise<LocationResult> => {
   try {
-    console.log("Iniciando detección de ubicación...");
+    // iniciando detección de ubicación
 
     // Verificar si los servicios de ubicación están habilitados
     const servicesEnabled = await Location.hasServicesEnabledAsync();
     if (!servicesEnabled) {
       try {
         // Intentar habilitar los servicios de ubicación automáticamente (Android)
-        console.log("Intentando habilitar servicios de ubicación...");
         await Location.enableNetworkProviderAsync();
-        console.log("Servicios de ubicación habilitados exitosamente");
       } catch (enableError) {
         console.log("No se pudo habilitar automáticamente:", enableError);
         return {
@@ -34,7 +32,6 @@ export const detectCurrentLocation = async (): Promise<LocationResult> => {
     }
 
     // Solicitar permisos de ubicación
-    console.log("Solicitando permisos de ubicación...");
     const { status } = await Location.requestForegroundPermissionsAsync();
 
     if (status !== "granted") {
@@ -45,14 +42,14 @@ export const detectCurrentLocation = async (): Promise<LocationResult> => {
       };
     }
 
-    console.log("Permisos concedidos, obteniendo ubicación...");
+    // permisos concedidos, obteniendo ubicación
 
     // Obtener ubicación actual con configuración optimizada
     const location = await Location.getCurrentPositionAsync({
       accuracy: Location.Accuracy.Balanced, // Cambiar de High a Balanced para mejor rendimiento
     });
 
-    console.log("Ubicación obtenida:", location.coords);
+    // ubicación obtenida
 
     // Geocodificación inversa para obtener la dirección
     const reverseGeocode = await Location.reverseGeocodeAsync({
@@ -60,7 +57,7 @@ export const detectCurrentLocation = async (): Promise<LocationResult> => {
       longitude: location.coords.longitude,
     });
 
-    console.log("Geocodificación inversa:", reverseGeocode);
+    // geocodificación inversa realizada
 
     if (reverseGeocode && reverseGeocode.length > 0) {
       const address = reverseGeocode[0];
@@ -74,7 +71,7 @@ export const detectCurrentLocation = async (): Promise<LocationResult> => {
 
       const formattedAddress = parts.join(", ") || "Ubicación detectada";
 
-      console.log("Dirección formateada:", formattedAddress);
+      // dirección formateada
 
       return {
         success: true,
@@ -183,31 +180,19 @@ export const fetchLocationSuggestions = async (
 // Función específica para solicitar habilitación de ubicación con diálogo nativo
 export const requestLocationEnable = async (): Promise<boolean> => {
   try {
-    console.log("Verificando servicios de ubicación...");
-
     const servicesEnabled = await Location.hasServicesEnabledAsync();
     if (servicesEnabled) {
-      console.log("Los servicios de ubicación ya están habilitados");
       return true;
     }
-
-    console.log(
-      "Los servicios están desactivados, mostrando diálogo nativo de Android..."
-    );
 
     // Esta función muestra el diálogo nativo de Android para habilitar ubicación
     await Location.enableNetworkProviderAsync();
 
     // Verificar si realmente se habilitó
     const newStatus = await Location.hasServicesEnabledAsync();
-    console.log(
-      "Estado después de mostrar diálogo nativo:",
-      newStatus ? "HABILITADO" : "SIGUE DESHABILITADO"
-    );
 
     return newStatus;
   } catch (error) {
-    console.log("Error al solicitar habilitación de ubicación:", error);
     return false;
   }
 };
