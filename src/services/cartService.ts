@@ -506,6 +506,33 @@ class CartService {
       return this.mapCartResponse(response);
     } catch (error) {
       console.error("❌ CartService: Error creating cart:", error);
+      // If the backend fails with a duplicate-key / unique constraint error,
+      // it's likely a cart for this user already exists. Try to recover by
+      // fetching the existing cart instead of bubbling the 500 to the UI.
+      try {
+        const msg =
+          (error && (error as any).message) ||
+          (error && (error as any).body && (error as any).body.message) ||
+          "";
+
+        if (
+          typeof msg === "string" &&
+          (msg.toLowerCase().includes("duplicate key") ||
+            msg.toLowerCase().includes("unique constraint") ||
+            msg.toLowerCase().includes("duplicate key value"))
+        ) {
+          console.log(
+            "🔄 CartService: Detected duplicate-key when creating cart, attempting to GET existing /carts/user..."
+          );
+          const existing = await this.getUserCart();
+          console.log("✅ CartService: Recovered existing cart:", existing.id);
+          return existing;
+        }
+      } catch (recovErr) {
+        console.error("⚠️ CartService: Recovery attempt failed:", recovErr);
+        // fallthrough to rethrow original error below
+      }
+
       throw error;
     }
   }

@@ -147,10 +147,7 @@ export const useOrdersStoreAPI = create<OrdersStore>((set, get) => ({
 
   // Create a new order using real API with simplified cart flow
   createOrder: async (orderRequest: CreateOrderRequest): Promise<Order> => {
-    console.log(
-      "🏪 Store API: Starting simplified createOrder with request:",
-      orderRequest
-    );
+    // Starting createOrder (verbose logs removed)
     set({ isLoading: true, error: undefined });
 
     try {
@@ -162,24 +159,30 @@ export const useOrdersStoreAPI = create<OrdersStore>((set, get) => ({
         throw new Error("No items in cart to create order");
       }
 
-      console.log("🛒 Store API: Processing checkout with cart items...");
-      console.log("📦 Store API: Cart items count:", cartState.products.length);
+      // processing checkout with cart items (verbose logs removed)
 
-      // Step 1: Get cart_id from backend using /carts/user endpoint (skip processing)
-      console.log("🔍 Store API: Getting cart_id from /carts/user endpoint...");
+      // Step 1: Get cart_id from backend using /carts/user endpoint
       const cartId = await getUserCartId();
-      console.log("🔍 Store API: Using cart_id from /carts/user:", cartId);
+      // Diagnostic: log cartId used to create the order
+      console.log("[OrdersStoreAPI] Creating order using cartId:", cartId);
 
       // Step 2: Create order directly from the user's existing cart
-      console.log("🌐 Store API: Creating order from user's cart...");
+      console.log(
+        "[OrdersStoreAPI] Calling orderService.createOrderFromCart with cartId:",
+        cartId
+      );
       const newOrder = await orderService.createOrderFromCart(cartId);
-
-      console.log("✅ Store API: Order created via API:", newOrder);
+      // Use a mutable variable for potential patching before saving/returning
+      let orderToSave: any = newOrder;
+      // Diagnostic: log the response returned by orderService
+      console.log(
+        "[OrdersStoreAPI] orderService.createOrderFromCart returned:",
+        orderToSave
+      );
 
       // Clear the local cart after successful order creation
       // Note: Backend automatically clears cart items when order is created
       useCartStore.getState().clearCart();
-      console.log("🧹 Store API: Local cart cleared after order creation");
 
       // Sync with server to ensure consistency
       // (Backend already cleared the cart, this ensures our local state matches)
@@ -199,23 +202,97 @@ export const useOrdersStoreAPI = create<OrdersStore>((set, get) => ({
         );
       }
 
+      // If the created order lacks deliveryAddress (or GET failed), and we have
+      // the deliveryAddress in the original orderRequest, attach it here so the
+      // object persisted in the store contains the fallback address. This is
+      // necessary because callers (like the modal) may patch their local copy
+      // but that wouldn't update the copy saved in the store.
+      try {
+        const hasDelivery =
+          orderToSave &&
+          ((orderToSave as any).deliveryAddress ||
+            (orderToSave as any).delivery_address);
+
+        if (
+          (!hasDelivery || (orderToSave as any).__get_failed) &&
+          (orderRequest as any)?.deliveryAddress
+        ) {
+          const od = (orderRequest as any).deliveryAddress;
+          let fallbackAddress: any = {
+            addressLine1: od.street,
+            addressLine2: od.additionalInfo || "",
+            city: od.city,
+            state: od.state || "",
+            postalCode: od.zipCode || "",
+            country: od.country,
+            latitude: od.latitude,
+            longitude: od.longitude,
+            phone: od.phone || undefined,
+          };
+
+          const normalized = {
+            street:
+              fallbackAddress.addressLine1 ||
+              (fallbackAddress as any).address_line_1 ||
+              (fallbackAddress as any).street ||
+              "",
+            additionalInfo:
+              fallbackAddress.addressLine2 ||
+              (fallbackAddress as any).address_line_2 ||
+              (fallbackAddress as any).additionalInfo ||
+              "",
+            city: fallbackAddress.city || (fallbackAddress as any).town || "",
+            state:
+              fallbackAddress.state || (fallbackAddress as any).province || "",
+            zipCode:
+              fallbackAddress.postalCode ||
+              (fallbackAddress as any).postal_code ||
+              (fallbackAddress as any).zip ||
+              "",
+            country: fallbackAddress.country || "",
+            latitude: fallbackAddress.latitude,
+            longitude: fallbackAddress.longitude,
+            phone: fallbackAddress.phone,
+          };
+
+          const patched: any = { ...(orderToSave as any) };
+          patched.deliveryAddress = normalized;
+          patched.delivery_address = normalized;
+          try {
+            patched.__attached_fallback = true;
+            console.log(
+              "[OrdersStoreAPI] Forced attach of deliveryAddress to newOrder before saving to store (__attached_fallback = true)"
+            );
+          } catch (e) {}
+          // update orderToSave variable with patched
+          orderToSave = patched as any;
+        }
+      } catch (e) {
+        console.error(
+          "[OrdersStoreAPI] Could not attach fallback deliveryAddress to newOrder:",
+          e
+        );
+      }
+
       // Add to store
       set((state) => {
         const newState = {
           ...state,
-          orders: [newOrder, ...state.orders],
-          currentOrder: newOrder,
+          orders: [orderToSave, ...state.orders],
+          currentOrder: orderToSave,
           isLoading: false,
         };
 
         console.log("💾 Store API: Saving to storage...");
+        // saving to storage
         saveOrdersState(newState);
 
         return newState;
       });
 
       console.log("🎉 Store API: Order creation completed successfully");
-      return newOrder;
+      // order creation completed successfully
+      return orderToSave;
     } catch (error) {
       console.error("❌ Store API: Error in createOrder:", error);
       set({
@@ -246,6 +323,7 @@ export const useOrdersStoreAPI = create<OrdersStore>((set, get) => ({
       });
 
       console.log("✅ Store API: User orders loaded:", orders.length);
+      // user orders loaded
     } catch (error) {
       console.error("❌ Store API: Error loading user orders:", error);
       set({
@@ -275,6 +353,7 @@ export const useOrdersStoreAPI = create<OrdersStore>((set, get) => ({
       });
 
       console.log("✅ Store API: Pending orders loaded:", orders.length);
+      // pending orders loaded
     } catch (error) {
       console.error("❌ Store API: Error loading pending orders:", error);
       set({
@@ -299,6 +378,7 @@ export const useOrdersStoreAPI = create<OrdersStore>((set, get) => ({
         // Update local state
         get().updateOrderStatus(orderId, "delivered");
         console.log("✅ Store API: Delivery confirmed");
+        // delivery confirmed
         set({ isLoading: false });
         return true;
       }
@@ -328,6 +408,7 @@ export const useOrdersStoreAPI = create<OrdersStore>((set, get) => ({
         // Update local state
         get().updateOrderStatus(orderId, "delivered");
         console.log("✅ Store API: Reception confirmed");
+        // reception confirmed
         set({ isLoading: false });
         return true;
       }
