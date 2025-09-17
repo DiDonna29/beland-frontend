@@ -536,20 +536,20 @@ export const CatalogScreen = () => {
           </Text>
         </View>
 
-            {communityLoading ? (
-              <ActivityIndicator color="#FF6B35" />
-            ) : communityResources.length === 0 ? (
-              <View style={{ padding: 24, alignItems: "center" }}>
-                <Text style={{ color: "#666" }}>No hay recursos disponibles</Text>
-              </View>
-            ) : (
-              // Reutilizar ResourcesGrid para mantener el mismo layout que CommunityScreen
-              <ResourcesGrid
-                resources={communityResources}
-                loading={communityLoading}
-                onPurchase={(r: any) => handleCommunityPurchasePress(r)}
-              />
-            )}
+        {communityLoading ? (
+          <ActivityIndicator color="#FF6B35" />
+        ) : communityResources.length === 0 ? (
+          <View style={{ padding: 24, alignItems: "center" }}>
+            <Text style={{ color: "#666" }}>No hay recursos disponibles</Text>
+          </View>
+        ) : (
+          // Reutilizar ResourcesGrid para mantener el mismo layout que CommunityScreen
+          <ResourcesGrid
+            resources={communityResources}
+            loading={communityLoading}
+            onPurchase={(r: any) => handleCommunityPurchasePress(r)}
+          />
+        )}
       </View>
     );
   };
