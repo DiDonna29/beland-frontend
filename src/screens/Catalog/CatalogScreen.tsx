@@ -1,4 +1,10 @@
-import React, { useEffect, useState, useRef, useMemo } from "react";
+import React, {
+  useEffect,
+  useState,
+  useRef,
+  useMemo,
+  useLayoutEffect,
+} from "react";
 import {
   View,
   Text,
@@ -96,6 +102,10 @@ export const CatalogScreen = () => {
 
   const brands: string[] = [];
 
+  // Guardar el orden inicial de las categorías para evitar reordenamientos
+  // cuando `allCategories` se carga posteriormente (evita flicker)
+  const initialCategoryOrderRef = useRef<string[] | null>(null);
+
   const { products, loading, error, updateQuery } = useProducts({
     page: 1,
     category_id: undefined,
@@ -116,6 +126,145 @@ export const CatalogScreen = () => {
     };
   }, [searchText, selectedCategoryId, filters.sortBy, filters.order]);
 
+  // Agrupar productos por categoría para renderizar secciones separadas
+  // Ahora agrupamos por `category_id` (si existe) y resolvemos el nombre usando `allCategories`.
+  // Fallback: usar `product.category` (string) si no hay `category_id`, o 'Sin categoría'.
+  const groupedProducts = useMemo(() => {
+    if (!products || products.length === 0)
+      return [] as { category: string; items: ProductCardType[] }[];
+
+    type Key = string; // keys will be prefixed: 'id:<id>' or 'name:<name>' or '__uncategorized'
+    const map: Record<Key, ProductCardType[]> = {};
+
+    const normalizeCategoryFromProduct = (p: any) => {
+      // Try explicit category_id first
+      if (p.category_id)
+        return { key: `id:${String(p.category_id)}`, displayName: undefined };
+
+      const cat = p.category;
+      if (!cat) return { key: "__uncategorized", displayName: undefined };
+
+      if (typeof cat === "string") {
+        const t = cat.trim();
+        return t
+          ? { key: `name:${t}`, displayName: t }
+          : { key: "__uncategorized", displayName: undefined };
+      }
+
+      // If category is an object, try to extract id/name
+      if (typeof cat === "object") {
+        const maybeId = cat.id || cat._id || cat.category_id;
+        const maybeName = cat.name || cat.title || cat.label;
+        if (maybeId)
+          return { key: `id:${String(maybeId)}`, displayName: maybeName };
+        if (maybeName)
+          return {
+            key: `name:${String(maybeName).trim()}`,
+            displayName: String(maybeName).trim(),
+          };
+      }
+
+      return { key: "__uncategorized", displayName: undefined };
+    };
+
+    products.forEach((p: any) => {
+      const info = normalizeCategoryFromProduct(p);
+      const key: Key = info.key;
+      if (!map[key]) map[key] = [];
+      map[key].push(p);
+    });
+
+    // DEBUG: mostrar sample de products y map para ayudar a diagnosticar
+    try {
+      // eslint-disable-next-line no-console
+      console.log("[Catalog] products sample:", (products || []).slice(0, 6));
+      // eslint-disable-next-line no-console
+      console.log("[Catalog] map keys:", Object.keys(map).slice(0, 20));
+    } catch (e) {
+      /* ignore logging failures */
+    }
+
+    const entries = Object.keys(map).map((key) => {
+      let categoryName: string | undefined;
+
+      if (key === "__uncategorized") {
+        categoryName = "Sin categoría";
+      } else if (key.startsWith("id:")) {
+        const id = key.slice(3);
+        const found = allCategories.find((c) => c.id === id);
+        categoryName = found ? found.name : id;
+      } else if (key.startsWith("name:")) {
+        categoryName = key.slice(5);
+      } else {
+        categoryName = key;
+      }
+
+      return { key, categoryName, items: map[key] };
+    });
+
+    // Crear y conservar un orden inicial de categorías para evitar que la UI
+    // se reordene cuando `allCategories` llegue después de que los productos
+    // ya se hayan renderizado. Si `allCategories` ya está presente, usar su
+    // orden; si no, usar el orden de aparición en `entries`.
+    if (!initialCategoryOrderRef.current) {
+      if (allCategories && allCategories.length > 0) {
+        // usar el orden provisto por allCategories pero filtrado a los nombres presentes
+        const namesOrder = allCategories.map((c) => c.name);
+        const present = entries
+          .map((e) => e.categoryName)
+          .filter((n) => namesOrder.includes(n));
+        const others = entries
+          .map((e) => e.categoryName)
+          .filter((n) => !namesOrder.includes(n));
+        initialCategoryOrderRef.current = [...present, ...others];
+      } else {
+        // fallback: orden por aparición en entries
+        initialCategoryOrderRef.current = entries.map((e) => e.categoryName);
+      }
+    }
+
+    const order =
+      initialCategoryOrderRef.current || entries.map((e) => e.categoryName);
+
+    // Ordenar usando el mapa de orden (si un elemento no está en el orden, caerá
+    // luego a orden alfabético)
+    entries.sort((a, b) => {
+      const ia = order.indexOf(a.categoryName || "");
+      const ib = order.indexOf(b.categoryName || "");
+      if (ia !== -1 && ib !== -1) return ia - ib;
+      if (ia !== -1) return -1;
+      if (ib !== -1) return 1;
+      return (a.categoryName || "").localeCompare(b.categoryName || "");
+    });
+
+    // Asegurarnos de que 'Productos Circulares' esté al principio si existe
+    const circIdx = entries.findIndex(
+      (e) => e.categoryName === "Productos Circulares"
+    );
+    if (circIdx > 0) {
+      const [circ] = entries.splice(circIdx, 1);
+      entries.unshift(circ);
+    }
+
+    return entries.map((e) => ({
+      category: e.categoryName || "Sin categoría",
+      items: e.items,
+    }));
+  }, [products, allCategories]);
+
+  const displayGroups = useMemo(() => {
+    if (groupedProducts && groupedProducts.length > 0) return groupedProducts;
+    if (products && products.length > 0) {
+      return [
+        {
+          category: "Todos",
+          items: products as ProductCardType[],
+        },
+      ];
+    }
+    return [] as { category: string; items: ProductCardType[] }[];
+  }, [groupedProducts, products]);
+
   const lastProductsQueryRef = useRef<string | null>(null);
   useEffect(() => {
     const qString = JSON.stringify(productQuery);
@@ -124,7 +273,10 @@ export const CatalogScreen = () => {
     updateQuery(productQuery);
   }, [productQuery]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    // Cargar categorías al montar el componente para tener los nombres listos
+    // antes del primer render y así evitar flicker y mostrar nombres humanos
+    // en lugar de ids si es posible.
     (async () => {
       try {
         const categories = await categoryService.getCategories();
@@ -133,12 +285,25 @@ export const CatalogScreen = () => {
         );
       } catch (e: any) {
         console.error("[CATEGORIAS] Error al cargar categorías:", e);
-        const cats = Array.from(
-          new Set((products || []).map((p) => p.category).filter(Boolean))
-        ).map((name) => ({ id: String(name), name: String(name) }));
-        setAllCategories(cats);
+        // No hacemos fallback inmediato aquí: si falla el servicio, intentamos
+        // rellenar nombres más tarde a partir de los productos disponibles.
       }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Si las categorías no vinieron del servicio, generar un fallback a partir
+  // del campo `product.category` cuando los productos estén disponibles.
+  useLayoutEffect(() => {
+    if (allCategories && allCategories.length > 0) return;
+    if (!products || products.length === 0) return;
+
+    const cats = Array.from(
+      new Set((products || []).map((p) => (p as any).category).filter(Boolean))
+    ).map((name) => ({ id: String(name), name: String(name) }));
+
+    if (cats.length > 0) setAllCategories(cats);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [products]);
 
   // Comunidad: recursos
@@ -173,15 +338,16 @@ export const CatalogScreen = () => {
 
   // Ensure community resources are loaded only once (protect against StrictMode double-effect)
   const communityLoadedRef = useRef(false);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (communityLoadedRef.current) return;
     communityLoadedRef.current = true;
     loadCommunityResources(1, 6);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Evitar parpadeo: si communityResources cambia rápidamente, no ocultar la
   // sección inmediatamente. Mostrarla inmediatamente cuando haya >0 recursos.
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (showCommunityTimer.current) {
       window.clearTimeout(showCommunityTimer.current);
       showCommunityTimer.current = null;
@@ -204,6 +370,7 @@ export const CatalogScreen = () => {
         showCommunityTimer.current = null;
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [communityResources]);
 
   // Si el usuario inicia sesión después de cargar la pantalla, recargar
@@ -837,11 +1004,32 @@ export const CatalogScreen = () => {
           // Revertido a grilla de productos (estilizada)
           <View style={{ paddingVertical: 8 }}>
             {products && products.length > 0 ? (
-              <ProductGrid
-                products={products}
-                onAddToCart={handleAddProduct}
-                addingProductId={addingProductId}
-              />
+              // Renderizar una sección por categoría
+              displayGroups.map((g) => (
+                <View key={g.category} style={{ marginBottom: 18 }}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      paddingHorizontal: 8,
+                      marginBottom: 8,
+                    }}
+                  >
+                    <Text
+                      style={{ fontSize: 16, fontWeight: "700", color: "#333" }}
+                    >
+                      {g.category}
+                    </Text>
+                    {/* opcional: botón 'Ver todo' para categoría */}
+                  </View>
+                  <ProductGrid
+                    products={g.items}
+                    onAddToCart={handleAddProduct}
+                    addingProductId={addingProductId}
+                  />
+                </View>
+              ))
             ) : (
               <View style={productStyles.emptyState}>
                 <Text style={productStyles.emptyStateText}>
