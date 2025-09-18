@@ -9,7 +9,9 @@ const getCardWidth = () => {
   if (isWeb) {
     if (screenWidth > 1200) return 200; // Pantallas grandes
     if (screenWidth > 768) return 180; // Tablets grandes
-    return 160; // Tablets pequeños
+    // En web mobile usar un ancho proporcional al viewport para evitar cards muy pequeñas
+    const computed = Math.floor(screenWidth * 0.8);
+    return Math.max(160, Math.min(360, computed));
   }
   // Mobile: 2 columnas con espaciado
   return (screenWidth - 48) / 2; // 16 padding + 8 gap por cada lado

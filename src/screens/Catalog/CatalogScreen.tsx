@@ -16,6 +16,9 @@ import {
   Modal,
   Image,
   ActivityIndicator,
+  FlatList,
+  Platform,
+  Dimensions,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { BeCoinsBalance } from "../../components/ui/BeCoinsBalance";
@@ -41,6 +44,7 @@ import { OrderDeliveryModal } from "./components/OrderDeliveryModal";
 import { CustomAlert } from "../../components/ui/CustomAlert";
 // Comunidad: reutilizar componentes existentes (solo ResourcesGrid)
 import { ResourcesGrid } from "../Community/components";
+import CatalogCommunityCarouselWeb from "./components/CatalogCommunityCarousel.web";
 
 // Styles
 import { containerStyles, productStyles } from "./styles";
@@ -345,6 +349,95 @@ export const CatalogScreen = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Refs & state to control horizontal carousel behavior for Comunidad
+  const communityListRef = useRef<FlatList<any> | null>(null);
+  const communityScrollRef = useRef<any>(null); // for web ScrollView DOM node
+  const communityX = useRef(0);
+  const communityContentWidth = useRef(0);
+  const communityLayoutWidth = useRef(0);
+  const [communityCanLeft, setCommunityCanLeft] = useState(false);
+  const [communityCanRight, setCommunityCanRight] = useState(false);
+  const itemWidthRef = useRef(0);
+  const currentIndexRef = useRef(0);
+
+  const { width: screenWidth } = Dimensions.get("window");
+  const isWeb = Platform.OS === "web";
+
+  const getCardWidth = () => {
+    if (isWeb) {
+      if (screenWidth > 1200) return 200;
+      if (screenWidth > 768) return 180;
+      return 160;
+    }
+    return (screenWidth - 48) / 2;
+  };
+  // initialize estimated width
+  if (!itemWidthRef.current) itemWidthRef.current = getCardWidth();
+
+  const updateCommunityNav = () => {
+    const idx = currentIndexRef.current || 0;
+    setCommunityCanLeft(idx > 0);
+    setCommunityCanRight(
+      idx < Math.max(0, (communityResources || []).length - 1)
+    );
+  };
+
+  const scrollCommunityBy = (dir: number) => {
+    const current = currentIndexRef.current || 0;
+    const maxIndex = Math.max(0, (communityResources.length || 1) - 1);
+    let next = current + dir;
+    if (next < 0) next = 0;
+    if (next > maxIndex) next = maxIndex;
+
+    if (isWeb) {
+      let node: any = null;
+      try {
+        if (communityScrollRef.current) {
+          // react-native-web ScrollView exposes a scrollable DOM node in several places
+          // try common accessors, fallback to the ref itself
+          node =
+            (communityScrollRef.current as any).getScrollableNode?.() ||
+            (communityScrollRef.current as any).getNativeScrollRef?.() ||
+            (communityScrollRef.current as any).scrollRef ||
+            (communityScrollRef.current as any);
+        }
+      } catch (e) {
+        node = communityScrollRef.current;
+      }
+      const itemWidth = itemWidthRef.current || getCardWidth();
+      const gap = 16;
+      const offset = next * (itemWidth + gap);
+      try {
+        if (node && typeof node.scrollTo === "function") {
+          node.scrollTo({ left: offset, top: 0, behavior: "smooth" });
+        } else if (node && typeof node.scrollLeft !== "undefined") {
+          node.scrollLeft = offset;
+        }
+      } catch (e) {
+        console.warn("No se pudo desplazar comunidad (web):", e);
+      }
+    } else {
+      const ref = communityListRef.current as any;
+      if (ref) {
+        try {
+          if (typeof ref.scrollToIndex === "function") {
+            ref.scrollToIndex({ index: next, animated: true });
+          } else if (typeof ref.scrollToOffset === "function") {
+            const itemWidth = itemWidthRef.current || getCardWidth();
+            const gap = 16;
+            ref.scrollToOffset({
+              offset: next * (itemWidth + gap),
+              animated: true,
+            });
+          }
+        } catch (e) {}
+      }
+    }
+
+    currentIndexRef.current = next;
+    updateCommunityNav();
+  };
+
   // Evitar parpadeo: si communityResources cambia rápidamente, no ocultar la
   // sección inmediatamente. Mostrarla inmediatamente cuando haya >0 recursos.
   useLayoutEffect(() => {
@@ -543,12 +636,112 @@ export const CatalogScreen = () => {
             <Text style={{ color: "#666" }}>No hay recursos disponibles</Text>
           </View>
         ) : (
-          // Reutilizar ResourcesGrid para mantener el mismo layout que CommunityScreen
-          <ResourcesGrid
-            resources={communityResources}
-            loading={communityLoading}
-            onPurchase={(r: any) => handleCommunityPurchasePress(r)}
-          />
+          <View>
+            {isWeb ? (
+              <CatalogCommunityCarouselWeb
+                items={communityResources}
+                renderItem={(item) => (
+                  <View style={{ marginLeft: 8, marginRight: 8 }}>
+                    <ResourcePreviewCard resource={item} />
+                  </View>
+                )}
+              />
+            ) : (
+              <FlatList
+                ref={(ref) => {
+                  communityListRef.current = ref;
+                }}
+                horizontal
+                data={communityResources}
+                keyExtractor={(item) => String(item.id)}
+                renderItem={({ item }) => (
+                  <View
+                    style={{ marginLeft: 16, marginRight: 8 }}
+                    onLayout={(e) => {
+                      const w = e.nativeEvent.layout.width || 0;
+                      // store the first measured width
+                      if (!itemWidthRef.current && w > 0)
+                        itemWidthRef.current = w;
+                    }}
+                  >
+                    <ResourcePreviewCard resource={item} />
+                  </View>
+                )}
+                showsHorizontalScrollIndicator={false}
+                onScroll={(e) => {
+                  const x = e.nativeEvent.contentOffset.x || 0;
+                  communityX.current = x;
+                  const itemWidth = itemWidthRef.current || 0;
+                  const gap = 24;
+                  const full = itemWidth + gap;
+                  if (full > 0) {
+                    const idx = Math.round(x / full);
+                    currentIndexRef.current = idx;
+                  }
+                  updateCommunityNav();
+                }}
+                scrollEventThrottle={50}
+                onContentSizeChange={(w, h) => {
+                  communityContentWidth.current = w || 0;
+                  updateCommunityNav();
+                }}
+                onLayout={(e) => {
+                  communityLayoutWidth.current =
+                    e.nativeEvent.layout.width || 0;
+                  updateCommunityNav();
+                }}
+                contentContainerStyle={{ paddingLeft: 8, paddingRight: 24 }}
+              />
+            )}
+
+            {communityCanLeft && (
+              <TouchableOpacity
+                accessibilityLabel="Anterior comunidad"
+                accessibilityRole="button"
+                style={{
+                  position: "absolute",
+                  left: 4,
+                  top: "40%",
+                  zIndex: 10,
+                  backgroundColor: "#FF6B35",
+                  padding: 8,
+                  borderRadius: 22,
+                  elevation: 5,
+                }}
+                onPress={() => scrollCommunityBy(-1)}
+              >
+                <Text
+                  style={{ fontSize: 18, color: "#fff", fontWeight: "700" }}
+                >
+                  ‹
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {communityCanRight && (
+              <TouchableOpacity
+                accessibilityLabel="Siguiente comunidad"
+                accessibilityRole="button"
+                style={{
+                  position: "absolute",
+                  right: 4,
+                  top: "40%",
+                  zIndex: 10,
+                  backgroundColor: "#FF6B35",
+                  padding: 8,
+                  borderRadius: 22,
+                  elevation: 5,
+                }}
+                onPress={() => scrollCommunityBy(1)}
+              >
+                <Text
+                  style={{ fontSize: 18, color: "#fff", fontWeight: "700" }}
+                >
+                  ›
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
         )}
       </View>
     );
