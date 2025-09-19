@@ -491,7 +491,61 @@ class OrderService {
     const mappedOrder = {
       id: response.id,
       userId: response.user_id || response.userId || "",
-      items: Array.isArray(response.items) ? response.items : [],
+      items: Array.isArray(response.items)
+        ? response.items.map((it: any) => {
+            if (!it || typeof it !== "object") return it;
+            const id = it.id || it.item_id || `${response.id}-${Math.random()}`;
+            const productId = it.product_id || it.productId || it.product || "";
+            const name = it.name || it.title || it.product_name || "";
+            const price = parseFloat(
+              (it.price !== undefined && it.price !== null
+                ? it.price
+                : it.unit_price) || 0
+            );
+            // Support becoin unit/total naming variants from backend
+            const priceBecoin =
+              it.unit_becoin ||
+              it.unitBecoin ||
+              it.unit_becoins ||
+              it.price_becoin ||
+              it.priceBecoin ||
+              it.price_becoins ||
+              it.total_becoin ||
+              it.totalBecoin ||
+              undefined;
+            const priceBecoinNum =
+              priceBecoin !== undefined && priceBecoin !== null
+                ? parseFloat(priceBecoin)
+                : undefined;
+            const quantity = parseInt(it.quantity || it.qty || 1, 10) || 1;
+            const image = it.image || it.image_url || it.imageUrl || undefined;
+            const subtotal = parseFloat(
+              it.subtotal ||
+                it.total ||
+                it.total_price ||
+                it.totalPrice ||
+                price * quantity ||
+                0
+            );
+
+            const mappedItem: any = {
+              id,
+              productId,
+              product_id: it.product_id || undefined,
+              name,
+              price: isNaN(price) ? 0 : price,
+              quantity,
+              image,
+              subtotal: isNaN(subtotal) ? 0 : subtotal,
+            };
+
+            if (priceBecoinNum !== undefined && !isNaN(priceBecoinNum)) {
+              mappedItem.priceBecoin = priceBecoinNum;
+            }
+
+            return mappedItem;
+          })
+        : [],
       subtotal: parseFloat(response.subtotal || response.total_amount || 0),
       discount: parseFloat(response.discount || 0),
       deliveryFee: parseFloat(
@@ -499,7 +553,61 @@ class OrderService {
       ),
       total: parseFloat(response.total || response.total_amount || 0),
       deliveryType: response.delivery_type || response.deliveryType || "home",
-      deliveryAddress: response.delivery_address || response.deliveryAddress,
+      // Normalize address returned as `address` or `delivery_address` to our DeliveryAddress
+      deliveryAddress: (() => {
+        const da =
+          response.delivery_address ||
+          response.deliveryAddress ||
+          response.address ||
+          response.addresses;
+        if (!da || typeof da !== "object") return undefined;
+
+        const street =
+          da.street || da.addressLine1 || da.address_line_1 || da.address || "";
+        const additionalInfo =
+          da.additionalInfo ||
+          da.addressLine2 ||
+          da.address_line_2 ||
+          da.addressLine2 ||
+          da.address_line2 ||
+          "";
+        const city = da.city || da.town || da.suburb || "";
+        const state = da.state || da.province || "";
+        const zipCode =
+          da.zipCode ||
+          da.postalCode ||
+          da.postal_code ||
+          da.zip ||
+          da.postal ||
+          "";
+        const country = da.country || "";
+        const latitude =
+          da.latitude !== undefined
+            ? isNaN(Number(da.latitude))
+              ? undefined
+              : Number(da.latitude)
+            : undefined;
+        const longitude =
+          da.longitude !== undefined
+            ? isNaN(Number(da.longitude))
+              ? undefined
+              : Number(da.longitude)
+            : undefined;
+        const phone =
+          da.phone || da.phone_number || da.phoneNumber || undefined;
+
+        return {
+          street,
+          city,
+          state,
+          zipCode,
+          country,
+          additionalInfo,
+          latitude,
+          longitude,
+          phone,
+        };
+      })(),
       groupId: response.group_id || response.groupId,
       status: orderStatus,
       createdAt: parseDate(
@@ -524,7 +632,11 @@ class OrderService {
         response.payment_method || response.paymentMethod || "becoins",
       paymentStatus:
         response.payment_status || response.paymentStatus || "pending",
-      becoinsUsed: response.becoins_used || response.becoinsUsed,
+      // Map becoins used: check several possible fields (be careful: backend uses different names)
+      becoinsUsed:
+        response.becoins_used ||
+        response.becoinsUsed ||
+        (response.total_becoin ? parseFloat(response.total_becoin) : undefined),
     };
 
     // Si los items están vacíos pero tenemos total_items, crear items placeholder
