@@ -562,13 +562,34 @@ const OrderDetailScreen: React.FC = () => {
                   <Text style={orderDetailStyles.itemPrice}>
                     {formatCurrency(item.price)} c/u
                   </Text>
+                  {((item as any).priceBecoin ||
+                    (item as any).price_becoin) && (
+                    <Text
+                      style={[
+                        orderDetailStyles.itemPrice,
+                        {
+                          fontSize: 12,
+                          color: colors.belandOrange,
+                          fontWeight: "700",
+                        },
+                      ]}
+                    >
+                      {`${(
+                        (item as any).priceBecoin ?? (item as any).price_becoin
+                      ).toString()} becoins c/u`}
+                    </Text>
+                  )}
                 </View>
                 <View style={orderDetailStyles.itemQuantity}>
-                  <View style={orderDetailStyles.quantityBadge}>
-                    <Text style={orderDetailStyles.quantityText}>
-                      x{item.quantity}
-                    </Text>
-                  </View>
+                  {item.quantity && item.quantity > 1 ? (
+                    <View style={orderDetailStyles.quantityBadge}>
+                      <Text style={orderDetailStyles.quantityText}>
+                        x{item.quantity}
+                      </Text>
+                    </View>
+                  ) : (
+                    <View style={{ width: 40 }} />
+                  )}
                   <Text style={orderDetailStyles.subtotalText}>
                     {formatCurrency(item.subtotal)}
                   </Text>
@@ -598,6 +619,25 @@ const OrderDetailScreen: React.FC = () => {
                 {formatCurrency(baseOrder.subtotal)}
               </Text>
             </View>
+            {/* Mostrar total en becoins si está disponible */}
+            {(baseOrder.becoinsUsed || (baseOrder as any).total_becoin) && (
+              <View style={orderDetailStyles.summaryRow}>
+                <Text style={orderDetailStyles.summaryLabel}>
+                  Total (becoins):
+                </Text>
+                <Text
+                  style={[
+                    orderDetailStyles.summaryValue,
+                    { color: colors.belandOrange, fontWeight: "700" },
+                  ]}
+                >
+                  {`${(
+                    (baseOrder as any).becoinsUsed ??
+                    (baseOrder as any).total_becoin
+                  ).toString()} becoins`}
+                </Text>
+              </View>
+            )}
             {baseOrder.deliveryFee > 0 && (
               <View style={orderDetailStyles.summaryRow}>
                 <Text style={orderDetailStyles.summaryLabel}>Envío:</Text>
