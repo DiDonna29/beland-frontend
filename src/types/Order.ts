@@ -13,8 +13,10 @@ export type DeliveryType = "home" | "group";
 export interface OrderItem {
   id: string;
   productId: string;
+  product_id?: string;
   name: string;
   price: number;
+  priceBecoin?: number;
   quantity: number;
   image?: string;
   subtotal: number; // price * quantity
