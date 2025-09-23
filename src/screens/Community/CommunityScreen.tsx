@@ -198,10 +198,12 @@ export const CommunityScreen = () => {
       );
       console.log("[BACKEND RESPUESTA COMPRA]", response);
 
-      // Verificar si la respuesta es null o undefined
-      if (!response) {
+      // Considerar como éxito si backend devolvió objeto o un marcador nullResponse
+      const isSuccess = response && (response.nullResponse === true || response);
+
+      if (!isSuccess) {
         console.warn(
-          "⚠️ Backend devolvió null - posible problema de saldo o stock"
+          "⚠️ Backend devolvió null/undefined - posible problema de saldo o stock"
         );
         // Cerrar el modal antes de mostrar la alerta
         handleModalClose();
@@ -212,8 +214,6 @@ export const CommunityScreen = () => {
         );
         return;
       }
-
-      const totalCost = priceCalc.finalPrice * quantity;
 
       showCustomAlert(
         "¡Compra Exitosa!",

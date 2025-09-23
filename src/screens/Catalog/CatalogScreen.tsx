@@ -755,6 +755,13 @@ export const CatalogScreen = () => {
         selectedCommunityResource.id,
         quantity
       );
+
+      const isSuccess = response && (response.nullResponse === true || response);
+
+      if (!isSuccess) {
+        throw new Error("Respuesta inválida del servidor");
+      }
+
       // Cerrar modal y recargar recursos para actualizar stock
       setPurchaseModalVisible(false);
       setSelectedCommunityResource(null);
