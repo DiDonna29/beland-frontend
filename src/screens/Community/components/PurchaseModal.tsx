@@ -46,11 +46,18 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
   const priceCalc = calculateResourcePrice(resource);
 
   const totalPrice = priceCalc.finalPrice * quantity;
-  const hasEnoughBalance = userBalance >= totalPrice;
-  const maxQuantity = Math.min(
-    resource.resource_quanity,
-    Math.floor(userBalance / priceCalc.finalPrice)
-  );
+  const isFree = priceCalc.finalPrice === 0;
+
+  // Evitar división por cero cuando el precio final es 0 (entrada gratuita)
+  const maxQuantity = isFree
+    ? resource.resource_quanity
+    : Math.min(
+        resource.resource_quanity,
+        Math.max(0, Math.floor(userBalance / priceCalc.finalPrice))
+      );
+
+  // Si es gratis, siempre hay suficiente saldo
+  const hasEnoughBalance = isFree ? true : userBalance >= totalPrice;
 
   const handleConfirm = async () => {
     // Validaciones completas antes de proceder
@@ -63,15 +70,17 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
       console.warn("Cantidad excede el stock disponible");
       return;
     }
+    // Si no es gratuito, validar que el usuario tenga saldo/permiso
+    if (!isFree) {
+      if (quantity > maxQuantity) {
+        console.warn("Cantidad excede el máximo permitido por saldo");
+        return;
+      }
 
-    if (quantity > maxQuantity) {
-      console.warn("Cantidad excede el máximo permitido por saldo");
-      return;
-    }
-
-    if (!hasEnoughBalance) {
-      console.warn("Saldo insuficiente para la compra");
-      return;
+      if (!hasEnoughBalance) {
+        console.warn("Saldo insuficiente para la compra");
+        return;
+      }
     }
 
     setLoading(true);
@@ -220,7 +229,10 @@ export const PurchaseModal: React.FC<PurchaseModalProps> = ({
                 value={quantity.toString()}
                 onChangeText={(text) => {
                   const num = parseInt(text) || 1;
-                  if (num >= 1 && num <= maxQuantity) {
+                  const allowedMax = isFree
+                    ? resource.resource_quanity
+                    : maxQuantity;
+                  if (num >= 1 && num <= allowedMax) {
                     setQuantity(num);
                   }
                 }}
