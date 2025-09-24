@@ -205,9 +205,56 @@ class WalletService {
     }
   }
   // Obtener datos de pago tras escanear QR
-  async getDataPayment(walletId: string): Promise<any> {
+  // Acepta como parámetro un string (UUID/alias/address) o un objeto (o JSON string)
+  async getDataPayment(rawIdentifier: any): Promise<any> {
     try {
-      const response = await apiRequest(`/wallets/data-Payment/${walletId}`, {
+      // Normalizar identificador: puede venir como JSON-stringified desde algunos QR
+      let identifier: any = rawIdentifier;
+
+      if (typeof identifier === "string") {
+        // Intentar decodeURIComponent en caso venga url-encoded
+        try {
+          const decoded = decodeURIComponent(identifier);
+          if (decoded && decoded !== identifier) {
+            identifier = decoded;
+          }
+        } catch (e) {
+          // ignore
+        }
+
+        // Si es un JSON string, parsearlo
+        const trimmed = (identifier || "").toString().trim();
+        if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+          try {
+            const obj = JSON.parse(trimmed);
+            identifier = obj;
+          } catch (e) {
+            // no es JSON válido, mantener string
+          }
+        }
+      }
+
+      // Si ahora es objeto, extraer campos relevantes
+      if (identifier && typeof identifier === "object") {
+        // Priorizar wallet_id/id, luego alias, luego address
+        identifier =
+          identifier.wallet_id ||
+          identifier.id ||
+          identifier.walletId ||
+          identifier.alias ||
+          identifier.address ||
+          identifier.amount_to_payment_id ||
+          null;
+      }
+
+      if (!identifier) {
+        const err: any = new Error("Identificador de wallet inválido");
+        err.status = 400;
+        throw err;
+      }
+
+      const safeId = encodeURIComponent(String(identifier));
+      const response = await apiRequest(`/wallets/data-Payment/${safeId}`, {
         method: "GET",
       });
       return response;

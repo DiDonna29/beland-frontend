@@ -173,7 +173,8 @@ export const QRScannerScreen = () => {
         setIsActive(true);
 
         // Intentar extraer status si el apiRequest lanzó un error con detalles
-        const status = err?.status || err?.statusCode || err?.body?.status || null;
+        const status =
+          err?.status || err?.statusCode || err?.body?.status || null;
         if (status === 500) {
           Alert.alert(
             "Error del servidor",
