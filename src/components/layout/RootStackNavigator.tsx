@@ -11,6 +11,7 @@ import { QRScannerScreen } from "../../screens/QRScannerScreen";
 import PaymentScreen from "../../screens/Payment/PaymentScreen";
 import { HistoryScreen, RecyclingMapScreen } from "../../screens";
 import UserDashboardScreen from "src/screens/UserDashboardScreen";
+import UserResourcesScreen from "src/screens/UserResources/UserResourcesScreen";
 
 import PayphoneSuccessScreen from "../../screens/Wallet/PayphoneSuccessScreen";
 import { CatalogScreen } from "src/screens/Catalog";
@@ -25,7 +26,7 @@ export type RootStackParamList = {
   // Asegúrate de que todas las demás rutas están aquí, tal como las tenías
   Wallet: undefined;
   Community: undefined;
-  QR: undefined;
+  QR: { pendingRedemption?: any } | undefined;
   RecyclingMap: undefined;
   CanjearScreen: undefined;
   SendScreen: undefined;
@@ -124,10 +125,8 @@ export const RootStackNavigator = () => {
       />
       <Stack.Screen
         name="UserResources"
-        component={
-          require("../../screens/UserResources/UserResourcesScreen").default
-        }
-        options={{ headerShown: true, title: "Mis Beneficios" }}
+        component={UserResourcesScreen}
+        options={{ headerShown: false }}
       />
     </Stack.Navigator>
   );

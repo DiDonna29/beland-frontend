@@ -10,6 +10,9 @@ import {
 import { resourceService } from "src/services/resourceService";
 import UserResourceCard from "./components/UserResourceCard";
 import { useCustomAlert } from "src/hooks/useCustomAlert";
+import { useNavigation } from "@react-navigation/native";
+import type { StackNavigationProp } from "@react-navigation/stack";
+import type { RootStackParamList } from "src/components/layout/RootStackNavigator";
 import { Gift, Filter } from "lucide-react-native";
 
 const UserResourcesScreen: React.FC = () => {
@@ -17,6 +20,7 @@ const UserResourcesScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const FILTERS = ["Todos", "Activos", "Expirados"];
   const { showCustomAlert } = useCustomAlert();
+  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
 
   const load = async () => {
     setLoading(true);
@@ -93,10 +97,10 @@ const UserResourcesScreen: React.FC = () => {
           <UserResourceCard
             item={item}
             onUse={(it) => {
-              showCustomAlert(
-                "Usar beneficio",
-                "Funcionalidad de canje aún no implementada",
-                "info"
+              // Redirigir al scanner QR pasando el recurso seleccionado
+              navigation.navigate(
+                "QR" as any,
+                { pendingRedemption: it } as any
               );
             }}
             onDetails={(it) => {
