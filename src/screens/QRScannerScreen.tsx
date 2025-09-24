@@ -39,8 +39,88 @@ export const QRScannerScreen = () => {
     (async () => {
       try {
         // processing scanned wallet_id
-        const paymentData = await walletService.getDataPayment(data);
-        // paymentData received
+        const paymentDataRaw = await walletService.getDataPayment(data);
+
+        // Sanitizar paymentData para evitar mostrar recursos inválidos que
+        // puedan venir de QRs de sistema o usuarios admin.
+        const sanitizePaymentData = (pd: any) => {
+          const copy: any = { ...(pd || {}) };
+
+          // Normalize amount to string/number where possible
+          if (typeof copy.amount === "string") {
+            const num = Number(copy.amount);
+            if (!isNaN(num)) copy.amount = num.toFixed(2);
+          }
+
+          // Filter paymentData.resource: solo entries con id, nombre y descuento válido
+          if (Array.isArray(copy.resource)) {
+            copy.resource = copy.resource.filter((res: any) => {
+              return (
+                res &&
+                (res.id || res.resource_id) &&
+                (res.resource_name || res.name) &&
+                typeof (
+                  res.resource_discount ??
+                  res.discount ??
+                  res.discount
+                ) !== "undefined" &&
+                Number((res.resource_discount ?? res.discount) || 0) > 0 &&
+                Number((res.resource_quanity ?? res.quantity) || 0) > 0
+              );
+            });
+          } else {
+            copy.resource = [];
+          }
+
+          // Filter redemptions: tener id y tipo
+          if (Array.isArray(copy.redemptions)) {
+            copy.redemptions = copy.redemptions.filter(
+              (r: any) => r && r.id && r.type
+            );
+          } else {
+            copy.redemptions = [];
+          }
+
+          // Filter user_resources: mantener solo los recursos con discount válido y cantidad disponible
+          if (Array.isArray(copy.user_resources)) {
+            copy.user_resources = copy.user_resources.filter((ur: any) => {
+              const hasResource = ur && ur.resource;
+              const discount = Number(
+                (ur.resource &&
+                  (ur.resource.discount || ur.resource.resource_discount)) ||
+                  0
+              );
+              const qty = Number(
+                (ur.quantity ?? ur.quantity_redeemed ?? 0) || 0
+              );
+              const available =
+                Number(ur.quantity ?? 0) - Number(ur.quantity_redeemed ?? 0);
+              return hasResource && discount > 0 && available > 0;
+            });
+          } else {
+            copy.user_resources = [];
+          }
+
+          return copy;
+        };
+
+        const paymentData = sanitizePaymentData(paymentDataRaw);
+
+        // Validación básica: si no hay wallet_id, amount ni amount_to_payment_id,
+        // probablemente no sea un QR de pago válido (ej. cuentas admin)
+        const hasValidPaymentKeys =
+          paymentData &&
+          (paymentData.wallet_id ||
+            paymentData.amount ||
+            paymentData.amount_to_payment_id);
+        if (!hasValidPaymentKeys) {
+          setLoading(false);
+          Alert.alert(
+            "QR no válido",
+            "Los datos recibidos no parecen corresponder a un pago válido."
+          );
+          return;
+        }
         // Log del pendingRedemption que vino al abrir el scanner
         // pendingRedemption (if present) attached from navigation params
         // Si el QR tiene wallet_id y amount, es pago QR
@@ -60,8 +140,23 @@ export const QRScannerScreen = () => {
           paymentData.amount_to_payment_id ?? null;
         // Si abrimos el scanner pasando un recurso pendiente, lo adjuntamos
         if (pendingRedemption) {
-          // attaching pendingRedemption to paymentData
           (paymentData as any).appliedRedemption = pendingRedemption;
+        }
+
+        // Detectar QRs que parecen ser de administración (heurística) y evitar navegar
+        const name = (paymentData.full_name || paymentData.commerce_name || "")
+          .toString()
+          .toLowerCase();
+        const isAdminQr =
+          /super.*admin|superadmin|\badmin\b|beland\s*admin/i.test(name);
+        if (isAdminQr) {
+          setLoading(false);
+          Alert.alert(
+            "QR no válido",
+            "El código QR escaneado pertenece a una cuenta administrativa y no corresponde a una máquina de cobro."
+          );
+          // No navegar al payment screen para evitar estados extraños
+          return;
         }
         setLoading(false);
         navigation.navigate("PaymentScreen", { paymentData } as any);
