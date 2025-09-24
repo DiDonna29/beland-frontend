@@ -1,5 +1,5 @@
 import { apiRequest } from "./api";
-// import { userService } from "./userService";
+import { resourceService } from "./resourceService";
 
 // Tipos para Wallet según el backend
 export interface Wallet {
@@ -90,13 +90,69 @@ class WalletService {
 
       console.log("✅ Compra exitosa:", response);
 
-      // Si el backend devuelve null/undefined, esto a veces indica que la
-      // operación se procesó correctamente pero no se devolvió cuerpo.
-      // Para no bloquear flujos como compras gratuitas, devolver un marcador
-      // que pueda ser interpretado por el frontend como éxito.
       if (response === null || response === undefined) {
-        console.warn("⚠️ Backend devolvió respuesta vacía para purchaseResource. Reintentando tratar como éxito (nullResponse=true).");
-        return { nullResponse: true };
+        console.warn(
+          "⚠️ Backend devolvió respuesta vacía para purchaseResource. Intentando verificar si el recurso fue asignado al usuario (verificación GET)."
+        );
+
+        // Intentar verificar con GET /user-resources (2 intentos con backoff)
+        const maxAttempts = 2;
+        let attempt = 0;
+        let verified = false;
+        let verification: any = null;
+
+        while (attempt < maxAttempts && !verified) {
+          attempt += 1;
+          try {
+            // Espera pequeña entre intentos (200ms)
+            if (attempt > 1) {
+              await new Promise((res) => setTimeout(res, 200));
+            }
+            const resp = await resourceService.getUserResources(
+              resourceId,
+              1,
+              1
+            );
+            verification = resp;
+            if (
+              resp &&
+              Array.isArray((resp as any).userResources) &&
+              (resp as any).userResources.length > 0
+            ) {
+              verified = true;
+              break;
+            }
+          } catch (err) {
+            console.warn(
+              "⚠️ Error verificando user-resources (intento",
+              attempt,
+              "):",
+              err
+            );
+          }
+        }
+
+        if (verified) {
+          console.log(
+            "✅ Verificación: user-resource encontrado tras POST vacío."
+          );
+          // Intentar obtener wallet actualizada para que el frontend refresque el balance
+          try {
+            const wallet = await this.getWalletByUserId("");
+            return { nullResponse: true, verified: true, verification, wallet };
+          } catch (wErr) {
+            console.warn(
+              "⚠️ No se pudo obtener wallet tras verificación:",
+              wErr
+            );
+            return { nullResponse: true, verified: true, verification };
+          }
+        }
+
+        console.warn(
+          "❌ Verificación fallida: no se encontró user-resource tras POST vacío."
+        );
+        return { nullResponse: true, verified: false, verification };
       }
 
       return response;

@@ -12,7 +12,7 @@ import {
 import BelandLogo2 from "../icons/BelandLogo2";
 import { useNavigation } from "@react-navigation/native";
 import { useAuth } from "src/hooks/AuthContext";
-import { LogOut, LayoutDashboard, Store } from "lucide-react-native";
+import { LogOut, LayoutDashboard, Store, Gift } from "lucide-react-native";
 import { RootStackParamList } from "./RootStackNavigator";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { showSuccessAlert, showErrorAlert } from "src/utils/alertHelpers";
@@ -152,8 +152,19 @@ export const AppHeader = () => {
                   style={styles.menuItem}
                   onPress={handleNavigateToDashboard}
                 >
-                  <LayoutDashboard size={20} color="#333" />
+                  <LayoutDashboard size={18} color="#333" />
                   <Text style={styles.menuItemText}>Dashboard</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.menuItem}
+                  onPress={() => {
+                    setMenuVisible(false);
+                    navigation.navigate("UserResources");
+                  }}
+                >
+                  <Gift size={18} color="#333" style={styles.menuItemIcon} />
+                  <Text style={styles.menuItemText}>Mis Beneficios</Text>
                 </TouchableOpacity>
 
                 {/* Mostrar opción solo si el usuario NO es comerciante */}
@@ -393,7 +404,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
   },
   menuItemIcon: {
-    marginRight: 10,
+    marginRight: 0,
     color: "#333",
   },
   menuItemText: {
