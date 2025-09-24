@@ -115,6 +115,9 @@ export const QRScannerScreen = () => {
             paymentData.amount_to_payment_id);
         if (!hasValidPaymentKeys) {
           setLoading(false);
+          // Restaurar scanner para permitir re-intento
+          setScanned(false);
+          setIsActive(true);
           Alert.alert(
             "QR no válido",
             "Los datos recibidos no parecen corresponder a un pago válido."
@@ -151,6 +154,9 @@ export const QRScannerScreen = () => {
           /super.*admin|superadmin|\badmin\b|beland\s*admin/i.test(name);
         if (isAdminQr) {
           setLoading(false);
+          // Restaurar scanner para permitir re-intento
+          setScanned(false);
+          setIsActive(true);
           Alert.alert(
             "QR no válido",
             "El código QR escaneado pertenece a una cuenta administrativa y no corresponde a una máquina de cobro."
@@ -160,10 +166,23 @@ export const QRScannerScreen = () => {
         }
         setLoading(false);
         navigation.navigate("PaymentScreen", { paymentData } as any);
-      } catch (err) {
+      } catch (err: any) {
         setLoading(false);
+        // Restaurar scanner para permitir re-intento
+        setScanned(false);
+        setIsActive(true);
+
+        // Intentar extraer status si el apiRequest lanzó un error con detalles
+        const status = err?.status || err?.statusCode || err?.body?.status || null;
+        if (status === 500) {
+          Alert.alert(
+            "Error del servidor",
+            "Ocurrió un error interno al procesar este QR en el servidor. Intenta de nuevo más tarde o contacta soporte."
+          );
+        } else {
+          Alert.alert("Error", "No se pudo obtener los datos de pago");
+        }
         console.error("[QRScanner] Error al obtener datos de pago:", err);
-        Alert.alert("Error", "No se pudo obtener los datos de pago");
       }
     })();
   };
