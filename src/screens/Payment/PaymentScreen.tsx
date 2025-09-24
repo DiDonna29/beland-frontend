@@ -108,6 +108,62 @@ const PaymentScreen: React.FC = () => {
 
   const { paymentData, amount_to_payment_id } = route.params;
 
+  // Si venimos desde el QRScanner con una redención pendiente, aplicarla automáticamente
+  // Calculamos directamente usando el monto que viene en paymentData para evitar
+  // condiciones de carrera con el estado `originalAmount`.
+  useEffect(() => {
+    const pending = (paymentData as any)?.appliedRedemption;
+    if (pending && !appliedRedemption) {
+      try {
+        const base = Number(paymentData.amount) || 0;
+        // Setear originalAmount inmediatamente
+        setOriginalAmount(base);
+
+        // Normalizar y calcular descuento según la forma del pending
+        let discountPercent = 0;
+        if ("type" in pending && pending.type === "DISCOUNT") {
+          discountPercent = Number(pending.value) || 0;
+          if (discountPercent > 0 && discountPercent <= 1)
+            discountPercent *= 100;
+        } else if ("resource" in pending && (pending.resource as any)) {
+          discountPercent = Number((pending.resource as any).discount) || 0;
+          if (discountPercent > 0 && discountPercent <= 1)
+            discountPercent *= 100;
+        }
+
+        const newAmount = base * (1 - discountPercent / 100);
+        const rounded = Math.max(0, Number(newAmount.toFixed(2)));
+
+        setAppliedRedemption(pending as any);
+        setDiscountedAmount(discountPercent >= 100 ? 0 : rounded);
+        // Actualizar el estado `amount` mostrado en la UI para montos fijos
+        // Esto evita que la UI muestre el saldo antiguo si otro efecto se
+        // ejecuta en distinto orden. Solo actualizar cuando el QR trae un monto fijo
+        // (no cuando el usuario puede editar el monto)
+        try {
+          const isFixedAmountLocal = Number(paymentData.amount) > 0;
+          if (isFixedAmountLocal) {
+            const displayValue = discountPercent >= 100 ? 0 : rounded;
+            setAmount(String(displayValue));
+          }
+        } catch (err) {
+          // ignore
+        }
+        setIsFreeEntry(discountPercent >= 100);
+        // pending applied (silent)
+      } catch (err) {
+        // ignore error applying pending redemption
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paymentData.amount]);
+
+  // Loguear paymentData al entrar para depuración
+  useEffect(() => {
+    // initial mount: no-op for logging in production
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const comercioNombre = paymentData.commerce_name || "Comercio Beland";
   const defaultProfileImg =
     "https://cdn-icons-png.flaticon.com/512/9131/9131529.png";
@@ -126,10 +182,63 @@ const PaymentScreen: React.FC = () => {
   };
 
   // Inicializar montos originales
+  // Helper: calcula monto descontado a partir de un original y una redención
+  const computeDiscountFrom = (
+    original: number,
+    redemption: Redemption | RealUserResource | null
+  ) => {
+    if (!redemption) {
+      // computeDiscountFrom -> no redemption
+      return { discounted: original, free: false };
+    }
+    // Manejar cupones tradicionales
+    if ("type" in redemption && redemption.type === "DISCOUNT") {
+      let discountPercent = Number(redemption.value) || 0;
+      if (discountPercent > 0 && discountPercent <= 1) discountPercent *= 100;
+      const newAmount = original * (1 - discountPercent / 100);
+      const rounded = Math.max(0, Number(newAmount.toFixed(2)));
+      // computeDiscountFrom -> coupon
+      return {
+        discounted: discountPercent >= 100 ? 0 : rounded,
+        free: discountPercent >= 100,
+      };
+    }
+
+    // Manejar user resource
+    if ("resource" in redemption && (redemption.resource as any)) {
+      const disc = Number((redemption.resource as any).discount) || 0;
+      let discountPercent = disc;
+      if (discountPercent > 0 && discountPercent <= 1) discountPercent *= 100;
+      const newAmount = original * (1 - discountPercent / 100);
+      const rounded = Math.max(0, Number(newAmount.toFixed(2)));
+      // computeDiscountFrom -> user resource
+      return {
+        discounted: discountPercent >= 100 ? 0 : rounded,
+        free: discountPercent >= 100,
+      };
+    }
+
+    // computeDiscountFrom -> fallback
+    return { discounted: original, free: false };
+  };
+
+  // Inicializar montos originales
+  // IMPORTANTE: incluir `appliedRedemption` en las dependencias para que
+  // cuando se establezca una redención (p.ej. viene adjunta desde el QR)
+  // se vuelva a calcular `discountedAmount` y `isFreeEntry` y no sea
+  // sobrescrito por otro efecto que también depende de `paymentData.amount`.
   useEffect(() => {
-    setOriginalAmount(Number(paymentData.amount));
-    setDiscountedAmount(Number(paymentData.amount));
-  }, [paymentData.amount]);
+    const base = Number(paymentData.amount);
+    setOriginalAmount(base);
+    // Si ya hay una redención aplicada (p.ej. viene del QR), calcular usando el monto base
+    if (appliedRedemption) {
+      const { discounted, free } = computeDiscountFrom(base, appliedRedemption);
+      setDiscountedAmount(discounted);
+      setIsFreeEntry(!!free);
+    } else {
+      setDiscountedAmount(base);
+    }
+  }, [paymentData.amount, appliedRedemption]);
 
   // Función para aplicar redención
   const applyRedemption = (redemption: Redemption | RealUserResource) => {
@@ -141,38 +250,16 @@ const PaymentScreen: React.FC = () => {
       return;
     }
 
+    // applyRedemption invoked
     setAppliedRedemption(redemption);
-
-    // Manejar diferentes tipos de redención
-    if ("type" in redemption && redemption.type === "DISCOUNT") {
-      const discountPercent = redemption.value;
-      const newAmount = originalAmount * (1 - discountPercent / 100);
-      setDiscountedAmount(Math.max(0, newAmount));
-
-      // Si el descuento es 100%, es entrada gratis
-      if (discountPercent >= 100) {
-        setIsFreeEntry(true);
-        setDiscountedAmount(0);
-      } else {
-        setIsFreeEntry(false);
-      }
-    } else if (
-      "resource" in redemption &&
-      redemption.resource &&
-      redemption.resource.discount
-    ) {
-      // UserResource con descuento
-      const discountPercent = redemption.resource.discount;
-      const newAmount = originalAmount * (1 - discountPercent / 100);
-      setDiscountedAmount(Math.max(0, newAmount));
-
-      if (discountPercent >= 100) {
-        setIsFreeEntry(true);
-        setDiscountedAmount(0);
-      } else {
-        setIsFreeEntry(false);
-      }
-    }
+    // Calcular con helper usando el original actual
+    const { discounted, free } = computeDiscountFrom(
+      originalAmount,
+      redemption as any
+    );
+    // computed discount applied
+    setDiscountedAmount(discounted);
+    setIsFreeEntry(!!free);
   };
 
   const isPresetFreeEntry =

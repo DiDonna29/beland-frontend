@@ -44,9 +44,26 @@ export const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
         disabled={!isPayphoneAvailable}
       >
         <div style={methodSelectorStyles.methodIcon}>
-          <PayphoneIcon width={32} height={32} />
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <rect
+              x="2"
+              y="6"
+              width="20"
+              height="12"
+              rx="2"
+              stroke="#333"
+              strokeWidth="1.2"
+            />
+            <path d="M3 9H21" stroke="#333" strokeWidth="1.2" />
+          </svg>
         </div>
-        <span style={methodSelectorStyles.methodText}>Payphone</span>
+        <span style={methodSelectorStyles.methodText}>Tarjeta</span>
         {!isPayphoneAvailable && effectiveAmount < 1 && (
           <div style={{ fontSize: "10px", color: "#ff6b6b", marginTop: "2px" }}>
             Mínimo $1.00
@@ -87,23 +104,44 @@ export const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
         onClick={() => onMethodChange("bank_transfer")}
       >
         <div style={methodSelectorStyles.methodIcon}>
+          {/* Icono de transferencia: dos flechas opuestas, alineadas horizontalmente */}
           <svg
-            width="24"
-            height="24"
+            width="20"
+            height="20"
             viewBox="0 0 24 24"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
+            aria-hidden="true"
           >
-            <rect
-              x="2"
-              y="6"
-              width="20"
-              height="12"
-              rx="2"
-              stroke="#333"
+            {/* Flecha superior -> derecha */}
+            <path
+              d="M4 9h14"
+              stroke="#6B7280"
               strokeWidth="1.2"
+              strokeLinecap="round"
             />
-            <path d="M3 9H21" stroke="#333" strokeWidth="1.2" />
+            <path
+              d="M14 5l4 4-4 4"
+              stroke="#6B7280"
+              strokeWidth="1.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+
+            {/* Flecha inferior -> izquierda */}
+            <path
+              d="M20 15H6"
+              stroke="#6B7280"
+              strokeWidth="1.2"
+              strokeLinecap="round"
+            />
+            <path
+              d="M10 11l-4 4 4 4"
+              stroke="#6B7280"
+              strokeWidth="1.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </svg>
         </div>
         <span style={methodSelectorStyles.methodText}>Transferencia</span>

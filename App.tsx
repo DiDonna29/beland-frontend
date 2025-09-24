@@ -25,6 +25,7 @@ import { NotificationBanner } from "./src/components/ui/NotificationBanner";
 import PayphoneSuccessScreen from "./src/screens/Wallet/PayphoneSuccessScreen";
 import SocketStatus from "./src/components/SocketStatus";
 import { usePaymentSocket } from "src/hooks/usePaymentSocket";
+import { User } from "lucide-react-native";
 
 const AppContent = () => {
   // Declarar todos los hooks al inicio, sin condicionales
@@ -148,6 +149,7 @@ const AppContent = () => {
         UserDashboardScreen: "user-dashboard",
         GroupsScreen: "Groups",
         PaymentScreen: "payment",
+        UserResources: "user-resources",
       },
     },
   };

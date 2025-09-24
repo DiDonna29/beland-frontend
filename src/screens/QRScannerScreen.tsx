@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 import type { StackNavigationProp } from "@react-navigation/stack";
 import type { RootStackParamList } from "../components/layout/RootStackNavigator";
 import { walletService } from "../services/walletService";
@@ -15,6 +15,8 @@ export const QRScannerScreen = () => {
   const [isActive, setIsActive] = useState(true);
   const [loading, setLoading] = useState(false);
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
+  const route = useRoute();
+  const pendingRedemption = (route.params as any)?.pendingRedemption;
 
   useEffect(() => {
     const getCameraPermissions = async () => {
@@ -28,7 +30,7 @@ export const QRScannerScreen = () => {
   const handleBarCodeScanned = ({ type, data }: BarcodeScanningResult) => {
     if (scanned) return;
 
-    console.log("[QRScanner] Código escaneado:", data, "Tipo:", type);
+    // QR scanned
     setScanned(true);
     setIsActive(false);
     setLoading(true);
@@ -36,9 +38,11 @@ export const QRScannerScreen = () => {
     // Navegación automática tras escaneo
     (async () => {
       try {
-        console.log("[QRScanner] Procesando wallet_id:", data);
+        // processing scanned wallet_id
         const paymentData = await walletService.getDataPayment(data);
-        console.log("[QRScanner] Datos recibidos:", paymentData);
+        // paymentData received
+        // Log del pendingRedemption que vino al abrir el scanner
+        // pendingRedemption (if present) attached from navigation params
         // Si el QR tiene wallet_id y amount, es pago QR
         if (
           paymentData.wallet_id &&
@@ -54,6 +58,11 @@ export const QRScannerScreen = () => {
         // Incluyo amount_to_payment_id en el objeto
         paymentData.amount_to_payment_id =
           paymentData.amount_to_payment_id ?? null;
+        // Si abrimos el scanner pasando un recurso pendiente, lo adjuntamos
+        if (pendingRedemption) {
+          // attaching pendingRedemption to paymentData
+          (paymentData as any).appliedRedemption = pendingRedemption;
+        }
         setLoading(false);
         navigation.navigate("PaymentScreen", { paymentData } as any);
       } catch (err) {
