@@ -37,6 +37,7 @@ export type RootStackParamList = {
   Catalog: undefined;
   Groups: undefined;
   UserDashboardScreen: undefined;
+  UserResources: undefined;
   PaymentScreen: {
     paymentData: {
       amount: number;
@@ -120,6 +121,13 @@ export const RootStackNavigator = () => {
         name="Catalog"
         component={CatalogScreen}
         options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="UserResources"
+        component={
+          require("../../screens/UserResources/UserResourcesScreen").default
+        }
+        options={{ headerShown: true, title: "Mis Beneficios" }}
       />
     </Stack.Navigator>
   );
