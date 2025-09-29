@@ -22,7 +22,8 @@ const SuperAdminPanel: React.FC = () => {
   return (
     <DashboardWrapper
       title={`Panel de ${user?.full_name || "Super Administrador"}`}
-      isLoading={isLoading}>
+      isLoading={isLoading}
+    >
       {user ? (
         <View style={styles.container}>
           <View style={styles.profileCard}>

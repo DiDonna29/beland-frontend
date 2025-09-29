@@ -25,7 +25,6 @@ import { NotificationBanner } from "./src/components/ui/NotificationBanner";
 import PayphoneSuccessScreen from "./src/screens/Wallet/PayphoneSuccessScreen";
 import SocketStatus from "./src/components/SocketStatus";
 import { usePaymentSocket } from "src/hooks/usePaymentSocket";
-import { User } from "lucide-react-native";
 
 const AppContent = () => {
   // Declarar todos los hooks al inicio, sin condicionales
@@ -59,15 +58,10 @@ const AppContent = () => {
   useEffect(() => {
     const configureSystemBars = async () => {
       if (Platform.OS === "android") {
-        try {
-          // Ocultar barra de navegación
-          await NavigationBar.setVisibilityAsync("hidden");
-          // Ocultar barra de estado también
-          setStatusBarHidden(true, "slide");
-          console.log("Barras del sistema ocultas correctamente");
-        } catch (error) {
-          console.log("Error configurando las barras del sistema:", error);
-        }
+        // Ocultar barra de navegación
+        await NavigationBar.setVisibilityAsync("hidden");
+        // Ocultar barra de estado también
+        setStatusBarHidden(true, "slide");
       }
     };
     configureSystemBars();

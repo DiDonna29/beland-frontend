@@ -2,7 +2,7 @@ import React from "react";
 import { View, StyleSheet, Platform } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { colors } from "../../styles/colors";
-import { DashboardScreen } from "../../screens/DashboardScreen";
+import { HomeScreen } from "../../screens/HomeScreen";
 import { WalletScreen } from "../../screens/WalletScreen";
 import { GroupsStackNavigator } from "./GroupsStackNavigator";
 import { CatalogScreen } from "../../screens/CatalogScreen";
@@ -111,7 +111,7 @@ export const MainTabNavigator = () => {
     >
       <Tab.Screen
         name="Home"
-        component={DashboardScreen}
+        component={HomeScreen}
         options={{ tabBarLabel: "Home" }}
       />
 

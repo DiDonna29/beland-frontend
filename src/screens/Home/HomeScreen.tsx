@@ -11,7 +11,7 @@ import { RecyclingCard, CommunityCard, ActivitySection } from "./components";
 import { RecyclingMapWidget } from "./components/RecyclingMapWidget";
 import { useDashboardNavigation, useDashboardData } from "./hooks";
 
-export const DashboardScreen = () => {
+export const HomeScreen = () => {
   const {
     handleMenuPress,
     handleViewHistory,
