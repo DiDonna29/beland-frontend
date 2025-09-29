@@ -19,7 +19,7 @@ const UserDashboard: React.FC = () => {
     );
   }
 
-  if (!user || !user.role) {
+  if (!user) {
     return (
       <View style={styles.container}>
         <Text style={styles.errorText}>
@@ -30,7 +30,18 @@ const UserDashboard: React.FC = () => {
     );
   }
 
-  switch (user.role) {
+  // Normalizar el rol: `user.role` puede ser string o un objeto { name }
+  const rawRole =
+    typeof (user as any).role === "string"
+      ? (user as any).role
+      : (user as any).role?.name ||
+        (user as any).role?.role_name ||
+        (user as any).role_name ||
+        "USER";
+
+  const role = rawRole.toString().toUpperCase();
+
+  switch (role) {
     case "SUPERADMIN":
       return <SuperAdminPanel />;
     case "ADMIN":
@@ -42,6 +53,11 @@ const UserDashboard: React.FC = () => {
     case "USER":
       return <UserPanel />;
     default:
+      console.error("[UserDashboard] rol desconocido:", {
+        role,
+        rawRole,
+        user,
+      });
       return (
         <View style={styles.container}>
           <Text style={styles.errorText}>

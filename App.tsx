@@ -108,6 +108,7 @@ const AppContent = () => {
   const shouldShowQRButton =
     currentRoute !== "QR" &&
     currentRoute !== "RecyclingMap" &&
+    currentRoute !== "user-dashboard" &&
     currentRoute &&
     !walletActionScreens.includes(currentRoute) &&
     !!user;
