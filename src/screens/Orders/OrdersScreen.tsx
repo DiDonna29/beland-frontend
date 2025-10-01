@@ -18,6 +18,7 @@ import { OrdersStackParamList } from "../../types/navigation";
 import { colors } from "../../styles/colors";
 import { ordersStyles } from "./styles";
 import { useAuth } from "../../hooks/AuthContext";
+import { AppHeader } from "../../components/layout/AppHeader";
 
 type OrdersScreenNavigationProp = StackNavigationProp<
   OrdersStackParamList,
@@ -369,99 +370,104 @@ const OrdersScreen: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={ordersStyles.container}>
-      <View style={ordersStyles.headerContainer}>
-        <View style={ordersStyles.headerRow}>
-          <View style={ordersStyles.headerTitles}>
-            <Text style={ordersStyles.headerMainTitle}>Mis Órdenes</Text>
-            <Text style={ordersStyles.headerSubtitle}>
-              Gestiona y revisa tus compras
-            </Text>
-          </View>
+    <>
+      <AppHeader />
+      <SafeAreaView style={ordersStyles.container}>
+        <View style={ordersStyles.headerContainer}>
+          <View style={ordersStyles.headerRow}>
+            <View style={ordersStyles.headerTitles}>
+              <Text style={ordersStyles.headerMainTitle}>Mis Órdenes</Text>
+              <Text style={ordersStyles.headerSubtitle}>
+                Gestiona y revisa tus compras
+              </Text>
+            </View>
 
-          {/* Botón de Delivery - Solo para personal autorizado */}
-          <TouchableOpacity
-            style={[
-              ordersStyles.deliveryButton,
-              !canPerformAction && ordersStyles.deliveryButtonDisabled,
-            ]}
-            onPress={() => {
-              if (canPerformAction) {
-                navigation.navigate("Delivery");
-              }
-            }}
-            activeOpacity={canPerformAction ? 0.8 : 1}
-            disabled={!canPerformAction}
-          >
-            <MaterialCommunityIcons
-              name="truck-delivery"
-              size={20}
-              color={canPerformAction ? "white" : colors.textSecondary}
-            />
-            <Text
+            {/* Botón de Delivery - Solo para personal autorizado */}
+            <TouchableOpacity
               style={[
-                ordersStyles.deliveryButtonText,
-                !canPerformAction && ordersStyles.deliveryButtonTextDisabled,
+                ordersStyles.deliveryButton,
+                !canPerformAction && ordersStyles.deliveryButtonDisabled,
               ]}
+              onPress={() => {
+                if (canPerformAction) {
+                  navigation.navigate("Delivery");
+                }
+              }}
+              activeOpacity={canPerformAction ? 0.8 : 1}
+              disabled={!canPerformAction}
             >
-              Delivery
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <ScrollView
-        style={ordersStyles.scrollView}
-        contentContainerStyle={ordersStyles.scrollContent}
-        refreshControl={
-          <RefreshControl
-            refreshing={isLoading}
-            onRefresh={handleRefresh}
-            colors={[colors.belandOrange]}
-            tintColor={colors.belandOrange}
-          />
-        }
-        showsVerticalScrollIndicator={false}
-      >
-        {orders.length > 0 && renderSummaryCard()}
-
-        {orders.length > 0 && renderFilterTabs()}
-
-        {filteredOrders.length === 0 ? (
-          <View style={ordersStyles.emptyState}>
-            <MaterialCommunityIcons
-              name="package-variant-closed"
-              size={80}
-              color={colors.textSecondary}
-            />
-            <Text style={ordersStyles.emptyTitle}>
-              {selectedFilter === "all"
-                ? "No tienes órdenes aún"
-                : `No hay órdenes ${filterOptions
-                    .find((f) => f.value === selectedFilter)
-                    ?.label.toLowerCase()}`}
-            </Text>
-            <Text style={ordersStyles.emptySubtitle}>
-              {selectedFilter === "all"
-                ? "Cuando realices tu primera compra, aparecerá aquí"
-                : "Prueba cambiando el filtro o realiza una nueva compra"}
-            </Text>
-            {selectedFilter === "all" && (
-              <TouchableOpacity
-                style={ordersStyles.shopButton}
-                onPress={() => navigation.goBack()}
+              <MaterialCommunityIcons
+                name="truck-delivery"
+                size={20}
+                color={canPerformAction ? "white" : colors.textSecondary}
+              />
+              <Text
+                style={[
+                  ordersStyles.deliveryButtonText,
+                  !canPerformAction && ordersStyles.deliveryButtonTextDisabled,
+                ]}
               >
-                <Text style={ordersStyles.shopButtonText}>Ir al catálogo</Text>
-              </TouchableOpacity>
-            )}
+                Delivery
+              </Text>
+            </TouchableOpacity>
           </View>
-        ) : (
-          <View style={ordersStyles.ordersList}>
-            {filteredOrders.map(renderOrderCard).filter(Boolean)}
-          </View>
-        )}
-      </ScrollView>
-    </SafeAreaView>
+        </View>
+
+        <ScrollView
+          style={ordersStyles.scrollView}
+          contentContainerStyle={ordersStyles.scrollContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={isLoading}
+              onRefresh={handleRefresh}
+              colors={[colors.belandOrange]}
+              tintColor={colors.belandOrange}
+            />
+          }
+          showsVerticalScrollIndicator={false}
+        >
+          {orders.length > 0 && renderSummaryCard()}
+
+          {orders.length > 0 && renderFilterTabs()}
+
+          {filteredOrders.length === 0 ? (
+            <View style={ordersStyles.emptyState}>
+              <MaterialCommunityIcons
+                name="package-variant-closed"
+                size={80}
+                color={colors.textSecondary}
+              />
+              <Text style={ordersStyles.emptyTitle}>
+                {selectedFilter === "all"
+                  ? "No tienes órdenes aún"
+                  : `No hay órdenes ${filterOptions
+                      .find((f) => f.value === selectedFilter)
+                      ?.label.toLowerCase()}`}
+              </Text>
+              <Text style={ordersStyles.emptySubtitle}>
+                {selectedFilter === "all"
+                  ? "Cuando realices tu primera compra, aparecerá aquí"
+                  : "Prueba cambiando el filtro o realiza una nueva compra"}
+              </Text>
+              {selectedFilter === "all" && (
+                <TouchableOpacity
+                  style={ordersStyles.shopButton}
+                  onPress={() => navigation.goBack()}
+                >
+                  <Text style={ordersStyles.shopButtonText}>
+                    Ir al catálogo
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          ) : (
+            <View style={ordersStyles.ordersList}>
+              {filteredOrders.map(renderOrderCard).filter(Boolean)}
+            </View>
+          )}
+        </ScrollView>
+      </SafeAreaView>
+    </>
   );
 };
 

@@ -3,29 +3,27 @@ import { View, Text, StyleSheet, Image } from "react-native";
 import { useAuth } from "src/hooks/AuthContext";
 import DashboardWrapper from "./DashboardWrapper";
 
-// Para simular datos que tu backend podría no devolver directamente en el perfil
-interface UserStats {
-  beCoinsBalance: number;
-  currentLevel: number;
-  completedTasks: number;
+// Datos simulados para el rol de SUPERADMIN
+interface SuperAdminStats {
+  totalEnterprises: number;
+  totalProjects: number;
+  systemHealth: string;
 }
 
-const UserPanel: React.FC = () => {
+const SuperAdminPanel: React.FC = () => {
   const { user, isLoading } = useAuth();
 
-  // En este punto, `user` ya contiene los datos del perfil cargados por `AuthContext`.
-  // Si necesitas datos adicionales, puedes hacer una llamada específica aquí.
-  // Por ahora, simularemos estos datos para mantener el ejemplo.
-  const userStats: UserStats = {
-    beCoinsBalance: 250,
-    currentLevel: 7,
-    completedTasks: 45,
+  const superAdminStats: SuperAdminStats = {
+    totalEnterprises: 50,
+    totalProjects: 500,
+    systemHealth: "Óptimo",
   };
 
   return (
     <DashboardWrapper
-      title={`Bienvenido, ${user?.full_name || user?.email.split("@")[0]}`}
-      isLoading={isLoading}>
+      title={`Panel de ${user?.full_name || "Super Administrador"}`}
+      isLoading={isLoading}
+    >
       {user ? (
         <View style={styles.container}>
           <View style={styles.profileCard}>
@@ -33,7 +31,7 @@ const UserPanel: React.FC = () => {
               source={{
                 uri:
                   user.profile_picture_url ||
-                  "https://ui-avatars.com/api/?name=User&background=random",
+                  "https://ui-avatars.com/api/?name=Super+Admin&background=random",
               }}
               style={styles.profileImage}
             />
@@ -45,24 +43,29 @@ const UserPanel: React.FC = () => {
 
           <View style={styles.statsContainer}>
             <View style={styles.statCard}>
-              <Text style={styles.statValue}>{userStats.beCoinsBalance}</Text>
-              <Text style={styles.statLabel}>BeCoins</Text>
+              <Text style={styles.statValue}>
+                {superAdminStats.totalEnterprises}
+              </Text>
+              <Text style={styles.statLabel}>Empresas Totales</Text>
             </View>
             <View style={styles.statCard}>
-              <Text style={styles.statValue}>{userStats.currentLevel}</Text>
-              <Text style={styles.statLabel}>Nivel</Text>
+              <Text style={styles.statValue}>
+                {superAdminStats.totalProjects}
+              </Text>
+              <Text style={styles.statLabel}>Proyectos en Curso</Text>
             </View>
             <View style={styles.statCard}>
-              <Text style={styles.statValue}>{userStats.completedTasks}</Text>
-              <Text style={styles.statLabel}>Tareas Completadas</Text>
+              <Text style={styles.statValue}>
+                {superAdminStats.systemHealth}
+              </Text>
+              <Text style={styles.statLabel}>Estado del Sistema</Text>
             </View>
           </View>
         </View>
       ) : (
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>
-            No se pudieron cargar los datos del usuario. Por favor, reinicie la
-            aplicación.
+            No se pudieron cargar los datos del usuario.
           </Text>
         </View>
       )}
@@ -146,4 +149,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default UserPanel;
+export default SuperAdminPanel;

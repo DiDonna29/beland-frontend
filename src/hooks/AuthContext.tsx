@@ -18,6 +18,10 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
 import { SocketService, RespSocket } from "../services/SocketService";
 import { useAuthTokenStore } from "src/stores/useAuthTokenStore";
+import {
+  useBeCoinsStore,
+  useBeCoinsStoreHydration,
+} from "src/stores/useBeCoinsStore";
 // import AsyncStorage from "@react-native-async-storage/async-storage";
 
 WebBrowser.maybeCompleteAuthSession();
@@ -149,9 +153,35 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   // const [socketData, setSocketData] = useState<RespSocket | null>(null);
 
   const user = useAuthTokenStore((state) => state.user);
-  const setUser = useAuthTokenStore((state) => state.setUser);
+  const setUserRaw = useAuthTokenStore((state) => state.setUser);
   const clearUser = useAuthTokenStore((state) => state.clearUser);
+  const setBeCoinsBalance = useBeCoinsStore((s) => s.setBalance);
+
+  // Wrapper para logging cuando se actualiza el usuario (ayuda a depuración)
+  const setUser = (u: AuthUser | null) => {
+    try {
+      // setUser wrapper
+    } catch (e) {
+      // ignore
+    }
+    setUserRaw(u);
+
+    try {
+      // Actualizar store de BeCoins cuando cambiamos el user
+      if (!u) {
+        setBeCoinsBalance(0);
+      } else {
+        const becoins =
+          Number((u as any).current_balance ?? (u as any).coins ?? 0) || 0;
+        setBeCoinsBalance(becoins);
+      }
+    } catch (e) {
+      console.warn("[AuthContext] no se pudo actualizar becoins store:", e);
+    }
+  };
   const [isLoading, setIsLoading] = useState(true);
+  // Hidratar el store de BeCoins desde almacenamiento persistido
+  const becoinsHydrated = useBeCoinsStoreHydration();
 
   // useEffect para socket y balance eliminado
 
@@ -212,14 +242,59 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         throw new Error(`Error al obtener perfil: ${response.statusText}`);
       }
       const data = await response.json();
+      // /auth/me response received
+
+      // Normalizar role: backend puede devolver `role` (string u objeto) o `role_name`.
+      let rawRoleVal = "";
+      if (typeof data.role === "string") {
+        rawRoleVal = data.role;
+      } else if (data.role && typeof data.role === "object") {
+        rawRoleVal = data.role.name || data.role.role_name || "";
+      } else {
+        rawRoleVal = data.role_name || "";
+      }
+      const normalizedRole = rawRoleVal
+        ? rawRoleVal.toString().toUpperCase()
+        : undefined;
+
       const userObj = {
         ...data,
-        picture: data.profile_picture_url,
-      };
+        role: normalizedRole,
+        picture: data.profile_picture_url || data.picture,
+      } as any;
       setUser(userObj);
-      console.log("✅ Perfil de usuario obtenido exitosamente.");
+
+      // Intentar sincronizar el saldo real de la wallet del usuario
+      try {
+        const walletRes = await fetchWithAuth(`${apiBaseUrl}/wallets/user`);
+        if (walletRes.ok) {
+          const walletData = await walletRes.json();
+          // /wallets/user response received
+          const becoinVal =
+            Number(
+              walletData?.becoin_balance ??
+                walletData?.be_coin_balance ??
+                walletData?.balance ??
+                walletData?.current_balance ??
+                0
+            ) || 0;
+          try {
+            setBeCoinsBalance(becoinVal);
+          } catch (e) {
+            console.warn(
+              "[AuthContext] no se pudo setear becoins desde wallet:",
+              e
+            );
+          }
+        } else {
+          // could not fetch wallet
+        }
+      } catch (err) {
+        // error consulting /wallets/user
+      }
+      // Perfil de usuario obtenido exitosamente
     } catch (error) {
-      console.error("❌ Error obteniendo perfil del usuario:", error);
+      // error getting user profile
       clearUser();
       await deleteToken();
       throw error;
@@ -232,7 +307,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       try {
         // Restaurar sesión híbrida solo una vez al montar
         const token = await getToken();
-        if (!token) clearUser();
+        if (!token) {
+          clearUser();
+        } else {
+          // Si hay token, primero sincronizamos cualquier user cacheado para
+          // disparar side-effects (como actualizar becoins), y luego
+          // refrescamos el perfil desde el backend para obtener datos reales.
+          try {
+            if (user) {
+              setUser(user);
+            }
+          } catch (e) {
+            console.warn("[AuthContext] no se pudo setear user cacheado:", e);
+          }
+
+          // Refrescar perfil real del backend
+          await getProfile();
+        }
 
         // Procesar redireccionamiento de Auth0 solo si hay response
         if (response && response.type === "success" && discovery) {
@@ -293,10 +384,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       // Limpiar todos los datos del localStorage
       await clearAllLocalStorage();
+      // Asegurar que el balance local de becoins se resetee
+      try {
+        setBeCoinsBalance(0);
+      } catch (e) {
+        console.warn("[AuthContext] no se pudo resetear becoins en logout:", e);
+      }
 
-      console.log("✅ Logout completado - Todos los datos han sido eliminados");
+      // Logout completed
     } catch (error) {
-      console.error("❌ Error durante el logout:", error);
+      // error during logout
     }
   };
 

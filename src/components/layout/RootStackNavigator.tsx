@@ -96,7 +96,7 @@ export const RootStackNavigator = () => {
       <Stack.Screen
         name="UserDashboardScreen"
         component={UserDashboardScreen}
-        options={{ headerShown: true, title: "Beland" }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="ReceiveScreen"
