@@ -1,6 +1,10 @@
 export { CommunityIcon } from "./CommunityIcon";
 export { BottleIcon } from "./BottleIcon";
 export { TreesIcon } from "./TreesIcon";
+export { WaterIcon } from "./WaterIcon";
+export { WeightIcon } from "./WeightIcon";
+export { RecycleIcon } from "./RecycleIcon";
+export { DeliveryIcon } from "./DeliveryIcon";
 export { HomeIcon } from "./HomeIcon";
 export { QRIcon } from "./QRIcon";
 export { WalletIcon } from "./WalletIcon";
