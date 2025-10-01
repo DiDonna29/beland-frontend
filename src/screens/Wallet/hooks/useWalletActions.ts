@@ -4,6 +4,7 @@ import {
   SendIcon,
   ReceiveIcon,
   RechargeIcon,
+  CobrarIcon,
 } from "../../../components/icons";
 import { useNavigation } from "@react-navigation/native";
 
@@ -55,7 +56,7 @@ export const useWalletActions = (
     mainWalletActions.push({
       id: "cobrar",
       label: "Cobrar",
-      icon: require("../../../components/icons").CobrarIcon,
+      icon: CobrarIcon,
       backgroundColor: "#FFFFFF",
       onPress: () => navigation.navigate("CobrarScreen" as never),
     });
