@@ -59,15 +59,11 @@ export const HomeScreen = () => {
   };
 
   const handleCommunity = () => {
-    navigation.navigate("UserResources" as never);
+    navigation.navigate("Catalog" as never);
   };
 
   const handleDelivery = () => {
     navigation.navigate("Catalog" as never);
-  };
-
-  const handleViewAllTransactions = () => {
-    navigation.navigate("HistoryScreen" as never);
   };
 
   if (Platform.OS === "web") {
