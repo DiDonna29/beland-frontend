@@ -6,12 +6,17 @@ import {
   StyleSheet,
   Platform,
 } from "react-native";
-import { TreesIcon, CommunityIcon, GiftIcon } from "../../../components/icons";
-import { BottleIcon } from "../../../components/icons";
+import {
+  TreesIcon,
+  CommunityIcon,
+  GiftIcon,
+  RecycleIcon,
+  DeliveryIcon,
+} from "../../../components/icons";
 import { useResponsiveLayout } from "../hooks/useResponsiveLayout";
 
 interface FeatureCardProps {
-  type: "recycling" | "community" | "benefits";
+  type: "recycling" | "community" | "delivery";
   onPress?: () => void;
   data?: any;
 }
@@ -26,9 +31,11 @@ export const FeatureCard: React.FC<FeatureCardProps> = ({
     switch (type) {
       case "recycling":
         return {
-          icon: <BottleIcon width={48} height={48} />,
+          icon: <RecycleIcon width={48} height={48} color="#10B981" />,
           title: "Reciclaje",
-          subtitle: `${data?.bottlesRecycled || 0} botellas recicladas`,
+          subtitle: `${((data?.bottlesRecycled || 0) * 0.025).toFixed(
+            1
+          )} kg reciclados`,
           description:
             "Encuentra puntos de reciclaje cerca de ti y suma BeCoins",
           color: "#10B981",
@@ -36,7 +43,7 @@ export const FeatureCard: React.FC<FeatureCardProps> = ({
         };
       case "community":
         return {
-          icon: <CommunityIcon width={48} height={48} />,
+          icon: <GiftIcon width={48} height={48} />,
           title: "Comunidad",
           subtitle: "Explora beneficios",
           description:
@@ -44,14 +51,15 @@ export const FeatureCard: React.FC<FeatureCardProps> = ({
           color: "#8B5CF6",
           bgColor: "#EDE9FE",
         };
-      case "benefits":
+      case "delivery":
         return {
-          icon: <GiftIcon width={48} height={48} />,
-          title: "Mis Beneficios",
-          subtitle: "Descubre tus recompensas",
-          description: "Ve todos los beneficios que has ganado y canjea nuevos",
-          color: "#5348ee",
-          bgColor: "#F3E8FF",
+          icon: <DeliveryIcon width={48} height={48} color="#0F766E" />,
+          title: "Delivery Circular",
+          subtitle: "Compra y recicla sin salir de tu casa",
+          description:
+            "Explora, compra y recibe a domicilio. Entréganos tus residuos, apoya a recicladores y gana monedas por cuidar el planeta.",
+          color: "#0F766E",
+          bgColor: "#CCFBF1",
         };
       default:
         return {

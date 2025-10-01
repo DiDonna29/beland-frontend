@@ -59,6 +59,10 @@ export const HomeScreen = () => {
   };
 
   const handleCommunity = () => {
+    navigation.navigate("UserResources" as never);
+  };
+
+  const handleDelivery = () => {
     navigation.navigate("Catalog" as never);
   };
 
@@ -98,12 +102,6 @@ export const HomeScreen = () => {
               onCollect={handleCollect}
             />
 
-            <StatsCard
-              becoins={balance}
-              bottlesRecycled={userStats?.bottlesRecycled ?? 0}
-              estimatedValue={estimatedValue.toFixed(2)}
-            />
-
             <View style={dynamicStyles.featuresGrid}>
               <FeatureCard
                 type="recycling"
@@ -111,11 +109,14 @@ export const HomeScreen = () => {
                 onPress={handleRecyclingMapPress}
               />
               <FeatureCard type="community" onPress={handleCommunity} />
-              <FeatureCard
-                type="benefits"
-                onPress={() => navigation.navigate("UserResources" as never)}
-              />
+              <FeatureCard type="delivery" onPress={handleDelivery} />
             </View>
+
+            <StatsCard
+              becoins={balance}
+              bottlesRecycled={userStats?.bottlesRecycled ?? 0}
+              estimatedValue={estimatedValue.toFixed(2)}
+            />
 
             <RecentTransactions transactions={transactions ?? []} />
           </View>
