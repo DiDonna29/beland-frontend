@@ -5,6 +5,7 @@ import { StackScreenProps } from "@react-navigation/stack";
 import { GroupsStackParamList } from "../../types/navigation";
 import { WaveBottomGray } from "../../components/icons";
 import { AppHeader } from "../../components/layout/AppHeader";
+import { UserMenu } from "../../components/ui/UserMenu";
 
 // Hooks
 import {

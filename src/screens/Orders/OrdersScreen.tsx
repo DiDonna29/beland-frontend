@@ -19,6 +19,7 @@ import { colors } from "../../styles/colors";
 import { ordersStyles } from "./styles";
 import { useAuth } from "../../hooks/AuthContext";
 import { AppHeader } from "../../components/layout/AppHeader";
+import { UserMenu } from "../../components/ui/UserMenu";
 
 type OrdersScreenNavigationProp = StackNavigationProp<
   OrdersStackParamList,
@@ -382,34 +383,41 @@ const OrdersScreen: React.FC = () => {
               </Text>
             </View>
 
-            {/* Botón de Delivery - Solo para personal autorizado */}
-            <TouchableOpacity
-              style={[
-                ordersStyles.deliveryButton,
-                !canPerformAction && ordersStyles.deliveryButtonDisabled,
-              ]}
-              onPress={() => {
-                if (canPerformAction) {
-                  navigation.navigate("Delivery");
-                }
-              }}
-              activeOpacity={canPerformAction ? 0.8 : 1}
-              disabled={!canPerformAction}
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 12 }}
             >
-              <MaterialCommunityIcons
-                name="truck-delivery"
-                size={20}
-                color={canPerformAction ? "white" : colors.textSecondary}
-              />
-              <Text
+              {/* Botón de Delivery - Solo para personal autorizado */}
+              <TouchableOpacity
                 style={[
-                  ordersStyles.deliveryButtonText,
-                  !canPerformAction && ordersStyles.deliveryButtonTextDisabled,
+                  ordersStyles.deliveryButton,
+                  !canPerformAction && ordersStyles.deliveryButtonDisabled,
                 ]}
+                onPress={() => {
+                  if (canPerformAction) {
+                    navigation.navigate("Delivery");
+                  }
+                }}
+                activeOpacity={canPerformAction ? 0.8 : 1}
+                disabled={!canPerformAction}
               >
-                Delivery
-              </Text>
-            </TouchableOpacity>
+                <MaterialCommunityIcons
+                  name="truck-delivery"
+                  size={20}
+                  color={canPerformAction ? "white" : colors.textSecondary}
+                />
+                <Text
+                  style={[
+                    ordersStyles.deliveryButtonText,
+                    !canPerformAction &&
+                      ordersStyles.deliveryButtonTextDisabled,
+                  ]}
+                >
+                  Delivery
+                </Text>
+              </TouchableOpacity>
+
+              <UserMenu iconColor="#fff" />
+            </View>
           </View>
         </View>
 

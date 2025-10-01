@@ -43,6 +43,7 @@ import { SearchBar, FilterPanel, ProductGrid } from "./components";
 import { ProductCard } from "./components/ProductCard";
 import { OrderDeliveryModal } from "./components/OrderDeliveryModal";
 import { CustomAlert } from "../../components/ui/CustomAlert";
+import { UserMenu } from "../../components/ui/UserMenu";
 // Comunidad: reutilizar componentes existentes (solo ResourcesGrid)
 import { ResourcesGrid } from "../Community/components";
 import CatalogCommunityCarouselWeb from "./components/CatalogCommunityCarousel.web";
@@ -931,6 +932,7 @@ export const CatalogScreen = () => {
                   )}
                 </TouchableOpacity>
               )}
+              <UserMenu style={{ marginLeft: 12 }} />
             </View>
           </View>
         </View>
