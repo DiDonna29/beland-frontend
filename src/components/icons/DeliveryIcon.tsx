@@ -31,7 +31,7 @@ export const DeliveryIcon: React.FC<DeliveryIconProps> = ({
         strokeLinejoin="round"
         fill="none"
       />
-      
+
       {/* Puerta */}
       <Path
         d="M9 19v-6h6v6"
@@ -41,7 +41,7 @@ export const DeliveryIcon: React.FC<DeliveryIconProps> = ({
         strokeLinejoin="round"
         fill="none"
       />
-      
+
       {/* Caja/paquete en la puerta */}
       <Path
         d="M10 17h4v2h-4v-2z"
@@ -52,7 +52,7 @@ export const DeliveryIcon: React.FC<DeliveryIconProps> = ({
         fill={color}
         fillOpacity="0.3"
       />
-      
+
       {/* Líneas en la caja */}
       <Path
         d="M10 18h4M12 17v2"
