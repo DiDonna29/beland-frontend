@@ -1,5 +1,5 @@
 import React from "react";
-import Svg, { Path, Circle } from "react-native-svg";
+import Svg, { Path, Rect, Circle } from "react-native-svg";
 
 interface DeliveryIconProps {
   width?: number;
@@ -14,52 +14,78 @@ export const DeliveryIcon: React.FC<DeliveryIconProps> = ({
 }) => {
   return (
     <Svg width={width} height={height} viewBox="0 0 24 24" fill="none">
-      {/* Casa simple */}
-      <Path
-        d="M3 12l9-9 9 9"
-        stroke={color}
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-      <Path
-        d="M5 12v7h14v-7"
-        stroke={color}
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-
-      {/* Puerta */}
-      <Path
-        d="M9 19v-6h6v6"
+      {/* Cabina del camión */}
+      <Rect
+        x="2"
+        y="7"
+        width="6"
+        height="6"
+        rx="1"
         stroke={color}
         strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-
-      {/* Caja/paquete en la puerta */}
-      <Path
-        d="M10 17h4v2h-4v-2z"
-        stroke={color}
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
         fill={color}
-        fillOpacity="0.3"
+        fillOpacity="0.2"
       />
 
-      {/* Líneas en la caja */}
-      <Path
-        d="M10 18h4M12 17v2"
+      {/* Caja de carga */}
+      <Rect
+        x="8"
+        y="5"
+        width="12"
+        height="8"
+        rx="1"
+        stroke={color}
+        strokeWidth="2"
+        fill={color}
+        fillOpacity="0.1"
+      />
+
+      {/* Parabrisas */}
+      <Rect
+        x="3"
+        y="8"
+        width="4"
+        height="3"
+        rx="0.5"
+        fill="#ffffff"
         stroke={color}
         strokeWidth="1.5"
+      />
+
+      {/* Rueda delantera */}
+      <Circle
+        cx="5"
+        cy="15"
+        r="2"
+        fill="#ffffff"
+        stroke={color}
+        strokeWidth="2"
+      />
+
+      {/* Rueda trasera */}
+      <Circle
+        cx="17"
+        cy="15"
+        r="2"
+        fill="#ffffff"
+        stroke={color}
+        strokeWidth="2"
+      />
+
+      {/* Centro de ruedas */}
+      <Circle cx="5" cy="15" r="0.7" fill={color} />
+      <Circle cx="17" cy="15" r="0.7" fill={color} />
+
+      {/* Puerta de carga */}
+      <Path
+        d="M19 6v6"
+        stroke={color}
+        strokeWidth="2.5"
         strokeLinecap="round"
       />
+
+      {/* Manija de puerta */}
+      <Circle cx="18" cy="9" r="0.8" fill={color} />
     </Svg>
   );
 };

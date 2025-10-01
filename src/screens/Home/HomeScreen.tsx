@@ -59,15 +59,11 @@ export const HomeScreen = () => {
   };
 
   const handleCommunity = () => {
-    navigation.navigate("UserResources" as never);
+    navigation.navigate("Catalog" as never);
   };
 
   const handleDelivery = () => {
     navigation.navigate("Catalog" as never);
-  };
-
-  const handleViewAllTransactions = () => {
-    navigation.navigate("HistoryScreen" as never);
   };
 
   if (Platform.OS === "web") {
@@ -87,7 +83,7 @@ export const HomeScreen = () => {
 
     return (
       <View style={webStyles.container}>
-        <AppHeader />
+        <AppHeader variant="home" />
         <ScrollView style={webStyles.scrollView}>
           <View style={dynamicStyles.content}>
             <HeroSection
@@ -128,7 +124,7 @@ export const HomeScreen = () => {
   // Mobile version - mismo diseño pero con layout adaptado
   return (
     <SafeAreaView style={styles.safeArea}>
-      <AppHeader />
+      <AppHeader variant="home" />
       <ScrollView style={styles.scrollView}>
         <View style={styles.content}>
           <HeroSection
