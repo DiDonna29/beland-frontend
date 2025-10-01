@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { WaveBottomGray } from "../../components/icons";
+import { AppHeader } from "../../components/layout/AppHeader";
 import {
   WalletHeader,
   WalletBalanceCard,
@@ -91,6 +92,7 @@ export const WalletScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
   return (
     <View style={{ flex: 1, backgroundColor: "#fff" }}>
+      <AppHeader />
       <View style={{ flex: 1 }}>
         <ScrollView
           style={{ flex: 1, backgroundColor: "#fff" }}

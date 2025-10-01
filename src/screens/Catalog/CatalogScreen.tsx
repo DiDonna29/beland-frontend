@@ -38,6 +38,7 @@ import { useAuth } from "../../hooks/AuthContext";
 import { useCustomAlert } from "../../hooks/useCustomAlert";
 
 // Components
+import { AppHeader } from "../../components/layout/AppHeader";
 import { SearchBar, FilterPanel, ProductGrid } from "./components";
 import { ProductCard } from "./components/ProductCard";
 import { OrderDeliveryModal } from "./components/OrderDeliveryModal";
@@ -756,7 +757,8 @@ export const CatalogScreen = () => {
         quantity
       );
 
-      const isSuccess = response && (response.nullResponse === true || response);
+      const isSuccess =
+        response && (response.nullResponse === true || response);
 
       if (!isSuccess) {
         throw new Error("Respuesta inválida del servidor");
@@ -880,286 +882,293 @@ export const CatalogScreen = () => {
   };
 
   return (
-    <SafeAreaView style={containerStyles.container}>
-      {/* Header */}
-      <View style={containerStyles.headerContainer}>
-        <View style={containerStyles.headerRow}>
-          <View style={containerStyles.headerLeft}>
-            <View style={containerStyles.headerTitles}>
-              <Text style={containerStyles.headerTitle}>Catálogo</Text>
-              <Text style={containerStyles.headerSubtitle}>
-                Productos disponibles para entrega
-              </Text>
-            </View>
-          </View>
-          <View style={{ flexDirection: "row", alignItems: "center" }}>
-            <BeCoinsBalance
-              size="medium"
-              variant="header"
-              style={containerStyles.coinsContainer}
-            />
-            {isAuthenticated && (
-              <TouchableOpacity
-                style={styles.headerCartBtn}
-                onPress={() => setShowCart(true)}
-                activeOpacity={0.8}
-              >
-                <MaterialCommunityIcons
-                  name={isSyncing ? "sync" : "cart-variant"}
-                  size={32}
-                  color={isSyncing ? "#FFA500" : "#FF6B35"}
-                  style={[
-                    styles.headerCartIcon,
-                    isSyncing && styles.syncingIcon,
-                  ]}
-                />
-                {cartProducts.length > 0 && !isSyncing && (
-                  <View style={styles.headerBadge}>
-                    <Text style={styles.headerBadgeText}>
-                      {cartProducts.length}
-                    </Text>
-                  </View>
-                )}
-                {isSyncing && (
-                  <View style={styles.syncIndicator}>
-                    <Text style={styles.syncText}>⟳</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-      </View>
-
-      {/* Content */}
-      <ScrollView
-        style={containerStyles.container}
-        contentContainerStyle={containerStyles.contentContainer}
-        showsVerticalScrollIndicator={false}
-      >
-        <SearchBar searchQuery={searchText} onSearchChange={setSearchText} />
-
-        {showFilters && (
-          <FilterPanel
-            filters={filters}
-            onFiltersChange={setFilters}
-            categories={allCategories.map((cat) => cat.name)}
-            brands={brands}
-          />
-        )}
-
-        <TouchableOpacity
-          style={{ marginBottom: 16, alignSelf: "flex-end" }}
-          onPress={() => setShowFilters(!showFilters)}
-        >
-          <Text style={{ color: "#FF6B35", fontWeight: "600" }}>
-            {showFilters ? "Ocultar filtros" : "Mostrar filtros"}
-          </Text>
-        </TouchableOpacity>
-
-        {/* Sección Comunidad integrada dentro del Catálogo
-            Mostrar solo si hay recursos o si está cargando (para evitar mostrar
-            un título vacío cuando no existan beneficios). */}
-        {showCommunity && <CatalogCommunitySection />}
-
-        {/* Productos - título y separación para mayor coherencia visual */}
-        <View
-          style={{
-            width: "100%",
-            paddingHorizontal: 8,
-            marginTop: 8,
-            marginBottom: 4,
-          }}
-        >
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              alignItems: "center",
-              paddingHorizontal: 8,
-            }}
-          >
-            <Text style={{ fontSize: 18, fontWeight: "700", color: "#333" }}>
-              Productos
-            </Text>
-            {/* Puedes mantener un botón 'Ver más' aquí si se desea */}
-          </View>
-          <View style={{ height: 8 }} />
-        </View>
-
-        {loading ? (
-          <Text style={{ textAlign: "center", marginTop: 32 }}>
-            Cargando productos...
-          </Text>
-        ) : error ? (
-          <Text style={{ color: "red", textAlign: "center", marginTop: 32 }}>
-            {error}
-          </Text>
-        ) : (
-          // Revertido a grilla de productos (estilizada)
-          <View style={{ paddingVertical: 8 }}>
-            {products && products.length > 0 ? (
-              // Renderizar una sección por categoría
-              displayGroups.map((g) => (
-                <View key={g.category} style={{ marginBottom: 18 }}>
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      paddingHorizontal: 8,
-                      marginBottom: 8,
-                    }}
-                  >
-                    <Text
-                      style={{ fontSize: 16, fontWeight: "700", color: "#333" }}
-                    >
-                      {g.category}
-                    </Text>
-                    {/* opcional: botón 'Ver todo' para categoría */}
-                  </View>
-                  <ProductGrid
-                    products={g.items}
-                    onAddToCart={handleAddProduct}
-                    addingProductId={addingProductId}
-                  />
-                </View>
-              ))
-            ) : (
-              <View style={productStyles.emptyState}>
-                <Text style={productStyles.emptyStateText}>
-                  No se encontraron productos
+    <>
+      <AppHeader />
+      <SafeAreaView style={containerStyles.container}>
+        {/* Header */}
+        <View style={containerStyles.headerContainer}>
+          <View style={containerStyles.headerRow}>
+            <View style={containerStyles.headerLeft}>
+              <View style={containerStyles.headerTitles}>
+                <Text style={containerStyles.headerTitle}>Catálogo</Text>
+                <Text style={containerStyles.headerSubtitle}>
+                  Productos disponibles para entrega
                 </Text>
               </View>
-            )}
+            </View>
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <BeCoinsBalance
+                size="medium"
+                variant="header"
+                style={containerStyles.coinsContainer}
+              />
+              {isAuthenticated && (
+                <TouchableOpacity
+                  style={styles.headerCartBtn}
+                  onPress={() => setShowCart(true)}
+                  activeOpacity={0.8}
+                >
+                  <MaterialCommunityIcons
+                    name={isSyncing ? "sync" : "cart-variant"}
+                    size={32}
+                    color={isSyncing ? "#FFA500" : "#FF6B35"}
+                    style={[
+                      styles.headerCartIcon,
+                      isSyncing && styles.syncingIcon,
+                    ]}
+                  />
+                  {cartProducts.length > 0 && !isSyncing && (
+                    <View style={styles.headerBadge}>
+                      <Text style={styles.headerBadgeText}>
+                        {cartProducts.length}
+                      </Text>
+                    </View>
+                  )}
+                  {isSyncing && (
+                    <View style={styles.syncIndicator}>
+                      <Text style={styles.syncText}>⟳</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
-        )}
-      </ScrollView>
+        </View>
 
-      {isAuthenticated && (
-        <CartBottomSheet
-          visible={showCart}
-          onClose={() => setShowCart(false)}
-          onNavigateToRecharge={() => {
-            setShowCart(false);
-            (navigation as any).navigate("RechargeScreen");
-          }}
-          onCheckout={async () => {
-            setShowCart(false);
+        {/* Content */}
+        <ScrollView
+          style={containerStyles.container}
+          contentContainerStyle={containerStyles.contentContainer}
+          showsVerticalScrollIndicator={false}
+        >
+          <SearchBar searchQuery={searchText} onSearchChange={setSearchText} />
 
-            if (cartProducts.length === 0) {
-              Alert.alert(
-                "Carrito vacío",
-                "Agrega productos antes de continuar"
-              );
-              return;
-            }
+          {showFilters && (
+            <FilterPanel
+              filters={filters}
+              onFiltersChange={setFilters}
+              categories={allCategories.map((cat) => cat.name)}
+              brands={brands}
+            />
+          )}
 
-            try {
-              // Mostrar loading si es necesario
+          <TouchableOpacity
+            style={{ marginBottom: 16, alignSelf: "flex-end" }}
+            onPress={() => setShowFilters(!showFilters)}
+          >
+            <Text style={{ color: "#FF6B35", fontWeight: "600" }}>
+              {showFilters ? "Ocultar filtros" : "Mostrar filtros"}
+            </Text>
+          </TouchableOpacity>
 
-              // Aquí es donde ahora procesamos el carrito al backend
-              // Pero por ahora, como aún no tienes la pantalla de direcciones,
-              // vamos a usar el modal de delivery existente
-              const firstProduct = cartProducts[0];
-              const fullProduct = products.find(
-                (p) => p.id === firstProduct.id
-              );
+          {/* Sección Comunidad integrada dentro del Catálogo
+            Mostrar solo si hay recursos o si está cargando (para evitar mostrar
+            un título vacío cuando no existan beneficios). */}
+          {showCommunity && <CatalogCommunitySection />}
 
-              if (fullProduct) {
-                openDeliveryModal(fullProduct);
-              } else {
+          {/* Productos - título y separación para mayor coherencia visual */}
+          <View
+            style={{
+              width: "100%",
+              paddingHorizontal: 8,
+              marginTop: 8,
+              marginBottom: 4,
+            }}
+          >
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center",
+                paddingHorizontal: 8,
+              }}
+            >
+              <Text style={{ fontSize: 18, fontWeight: "700", color: "#333" }}>
+                Productos
+              </Text>
+              {/* Puedes mantener un botón 'Ver más' aquí si se desea */}
+            </View>
+            <View style={{ height: 8 }} />
+          </View>
+
+          {loading ? (
+            <Text style={{ textAlign: "center", marginTop: 32 }}>
+              Cargando productos...
+            </Text>
+          ) : error ? (
+            <Text style={{ color: "red", textAlign: "center", marginTop: 32 }}>
+              {error}
+            </Text>
+          ) : (
+            // Revertido a grilla de productos (estilizada)
+            <View style={{ paddingVertical: 8 }}>
+              {products && products.length > 0 ? (
+                // Renderizar una sección por categoría
+                displayGroups.map((g) => (
+                  <View key={g.category} style={{ marginBottom: 18 }}>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        paddingHorizontal: 8,
+                        marginBottom: 8,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 16,
+                          fontWeight: "700",
+                          color: "#333",
+                        }}
+                      >
+                        {g.category}
+                      </Text>
+                      {/* opcional: botón 'Ver todo' para categoría */}
+                    </View>
+                    <ProductGrid
+                      products={g.items}
+                      onAddToCart={handleAddProduct}
+                      addingProductId={addingProductId}
+                    />
+                  </View>
+                ))
+              ) : (
+                <View style={productStyles.emptyState}>
+                  <Text style={productStyles.emptyStateText}>
+                    No se encontraron productos
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
+        </ScrollView>
+
+        {isAuthenticated && (
+          <CartBottomSheet
+            visible={showCart}
+            onClose={() => setShowCart(false)}
+            onNavigateToRecharge={() => {
+              setShowCart(false);
+              (navigation as any).navigate("RechargeScreen");
+            }}
+            onCheckout={async () => {
+              setShowCart(false);
+
+              if (cartProducts.length === 0) {
                 Alert.alert(
-                  "Producto no disponible",
-                  "El producto seleccionado ya no está disponible en el catálogo.",
+                  "Carrito vacío",
+                  "Agrega productos antes de continuar"
+                );
+                return;
+              }
+
+              try {
+                // Mostrar loading si es necesario
+
+                // Aquí es donde ahora procesamos el carrito al backend
+                // Pero por ahora, como aún no tienes la pantalla de direcciones,
+                // vamos a usar el modal de delivery existente
+                const firstProduct = cartProducts[0];
+                const fullProduct = products.find(
+                  (p) => p.id === firstProduct.id
+                );
+
+                if (fullProduct) {
+                  openDeliveryModal(fullProduct);
+                } else {
+                  Alert.alert(
+                    "Producto no disponible",
+                    "El producto seleccionado ya no está disponible en el catálogo.",
+                    [{ text: "OK" }]
+                  );
+                }
+              } catch (error) {
+                console.error("Error en checkout:", error);
+                Alert.alert(
+                  "Error",
+                  "Hubo un problema al procesar tu carrito. Inténtalo de nuevo.",
                   [{ text: "OK" }]
                 );
               }
-            } catch (error) {
-              console.error("Error en checkout:", error);
-              Alert.alert(
-                "Error",
-                "Hubo un problema al procesar tu carrito. Inténtalo de nuevo.",
-                [{ text: "OK" }]
-              );
-            }
+            }}
+          />
+        )}
+
+        <OrderDeliveryModal
+          visible={showDeliveryModal}
+          onClose={closeDeliveryModal}
+          onOrderCreated={(orderId: string) => {
+            // Navigate to Orders tab to see the created order
+            (navigation as any).navigate("Orders");
           }}
         />
-      )}
 
-      <OrderDeliveryModal
-        visible={showDeliveryModal}
-        onClose={closeDeliveryModal}
-        onOrderCreated={(orderId: string) => {
-          // Navigate to Orders tab to see the created order
-          (navigation as any).navigate("Orders");
-        }}
-      />
+        {/* Purchase modals para recursos de Comunidad (misma experiencia que CommunityScreen) */}
+        <PurchaseModal
+          visible={purchaseModalVisible}
+          resource={selectedCommunityResource}
+          userBalance={balance || 0}
+          onConfirm={async (qty: number) => {
+            await handleCommunityModalConfirm(qty);
+          }}
+          onCancel={handleCommunityModalCancel}
+          onNavigateToRecharge={() => {
+            setPurchaseModalVisible(false);
+            setSelectedCommunityResource(null);
+            (navigation as any).navigate("RechargeScreen");
+          }}
+        />
 
-      {/* Purchase modals para recursos de Comunidad (misma experiencia que CommunityScreen) */}
-      <PurchaseModal
-        visible={purchaseModalVisible}
-        resource={selectedCommunityResource}
-        userBalance={balance || 0}
-        onConfirm={async (qty: number) => {
-          await handleCommunityModalConfirm(qty);
-        }}
-        onCancel={handleCommunityModalCancel}
-        onNavigateToRecharge={() => {
-          setPurchaseModalVisible(false);
-          setSelectedCommunityResource(null);
-          (navigation as any).navigate("RechargeScreen");
-        }}
-      />
+        <InsufficientBalanceModal
+          visible={insufficientBalanceModalVisible}
+          userBalance={balance || 0}
+          requiredAmount={
+            selectedCommunityResource
+              ? calculateResourcePrice(selectedCommunityResource).finalPrice
+              : 0
+          }
+          onRecharge={() => {
+            setInsufficientBalanceModalVisible(false);
+            setSelectedCommunityResource(null);
+            (navigation as any).navigate("RechargeScreen");
+          }}
+          onCancel={() => {
+            setInsufficientBalanceModalVisible(false);
+            setSelectedCommunityResource(null);
+          }}
+        />
 
-      <InsufficientBalanceModal
-        visible={insufficientBalanceModalVisible}
-        userBalance={balance || 0}
-        requiredAmount={
-          selectedCommunityResource
-            ? calculateResourcePrice(selectedCommunityResource).finalPrice
-            : 0
-        }
-        onRecharge={() => {
-          setInsufficientBalanceModalVisible(false);
-          setSelectedCommunityResource(null);
-          (navigation as any).navigate("RechargeScreen");
-        }}
-        onCancel={() => {
-          setInsufficientBalanceModalVisible(false);
-          setSelectedCommunityResource(null);
-        }}
-      />
+        {/* Custom Alert para autenticación */}
+        <CustomAlert
+          visible={showAuthAlert}
+          title="¡Inicia sesión para comprar!"
+          message="Para agregar productos al carrito, necesitas tener una cuenta activa. Es rápido y seguro."
+          type="info"
+          onClose={() => setShowAuthAlert(false)}
+          primaryButton={{
+            text: "Iniciar sesión",
+            onPress: () => {
+              setShowAuthAlert(false);
+              loginWithAuth0();
+            },
+          }}
+          secondaryButton={{
+            text: "Más tarde",
+            onPress: () => setShowAuthAlert(false),
+          }}
+        />
 
-      {/* Custom Alert para autenticación */}
-      <CustomAlert
-        visible={showAuthAlert}
-        title="¡Inicia sesión para comprar!"
-        message="Para agregar productos al carrito, necesitas tener una cuenta activa. Es rápido y seguro."
-        type="info"
-        onClose={() => setShowAuthAlert(false)}
-        primaryButton={{
-          text: "Iniciar sesión",
-          onPress: () => {
-            setShowAuthAlert(false);
-            loginWithAuth0();
-          },
-        }}
-        secondaryButton={{
-          text: "Más tarde",
-          onPress: () => setShowAuthAlert(false),
-        }}
-      />
-
-      {/* Alert del hook useCustomAlert para otros mensajes */}
-      <CustomAlert
-        visible={showAlert}
-        title={alertConfig.title}
-        message={alertConfig.message}
-        type={alertConfig.type}
-        onClose={hideAlert}
-      />
-    </SafeAreaView>
+        {/* Alert del hook useCustomAlert para otros mensajes */}
+        <CustomAlert
+          visible={showAlert}
+          title={alertConfig.title}
+          message={alertConfig.message}
+          type={alertConfig.type}
+          onClose={hideAlert}
+        />
+      </SafeAreaView>
+    </>
   );
 };
 
