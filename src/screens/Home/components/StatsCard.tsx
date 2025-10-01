@@ -1,11 +1,11 @@
 import React from "react";
 import { View, Text, StyleSheet, Platform } from "react-native";
 import { BeCoinIcon } from "../../../components/icons/BeCoinIcon";
-import { BottleIcon, TreesIcon } from "../../../components/icons";
+import { RecycleIcon, WaterIcon } from "../../../components/icons";
 
 interface StatsCardProps {
   becoins: number;
-  bottlesRecycled: number;
+  bottlesRecycled: number; // Usado para calcular kg reciclados y litros conservados
   estimatedValue: string;
 }
 
@@ -23,18 +23,18 @@ export const StatsCard: React.FC<StatsCardProps> = ({
       color: "#1E40AF",
     },
     {
-      icon: <BottleIcon width={32} height={32} />,
-      value: bottlesRecycled.toLocaleString(),
-      label: "Botellas recicladas",
+      icon: <RecycleIcon width={32} height={32} color="#059669" />,
+      value: (bottlesRecycled * 0.025).toFixed(1),
+      label: "Kg reciclados",
       sublabel: "Este mes",
       color: "#059669",
     },
     {
-      icon: <TreesIcon width={32} height={32} />,
-      value: Math.floor(bottlesRecycled * 0.1).toString(),
-      label: "Árboles salvados",
-      sublabel: "Equivalente estimado",
-      color: "#10B981",
+      icon: <WaterIcon width={32} height={32} color="#3B82F6" />,
+      value: Math.floor(bottlesRecycled * 0.5).toString(),
+      label: "Litros conservados",
+      sublabel: "de agua",
+      color: "#3B82F6",
     },
   ];
 

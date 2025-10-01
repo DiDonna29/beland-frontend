@@ -1,17 +1,19 @@
 import React from "react";
 import { View, Text } from "react-native";
 import { Card } from "../../../components/ui/Card";
-import { BottleIcon, TreesIcon } from "../../../components/icons";
+import { RecycleIcon, WaterIcon } from "../../../components/icons";
 import { colors } from "../../../styles/colors";
 import { recyclingCardStyles } from "../styles";
 
 interface RecyclingCardProps {
-  bottlesRecycled: number;
+  bottlesRecycled: number; // Usado para calcular kg reciclados
 }
 
 export const RecyclingCard: React.FC<RecyclingCardProps> = ({
   bottlesRecycled,
 }) => {
+  const kgRecycled = bottlesRecycled * 0.025; // Conversión estimada de botellas a kg
+
   return (
     <Card
       style={recyclingCardStyles.recyclingCard}
@@ -20,7 +22,7 @@ export const RecyclingCard: React.FC<RecyclingCardProps> = ({
       <View style={recyclingCardStyles.recyclingContent}>
         <View style={recyclingCardStyles.recyclingLeft}>
           <View style={recyclingCardStyles.iconContainer}>
-            <BottleIcon width={48} height={64} />
+            <RecycleIcon width={48} height={64} color="#059669" />
           </View>
           <View>
             <Text style={recyclingCardStyles.recyclingTitle}>Reciclaste</Text>
@@ -28,11 +30,9 @@ export const RecyclingCard: React.FC<RecyclingCardProps> = ({
               {bottlesRecycled > 0 ? (
                 <>
                   <Text style={recyclingCardStyles.recyclingNumber}>
-                    {bottlesRecycled}
+                    {kgRecycled.toFixed(1)}
                   </Text>
-                  <Text style={recyclingCardStyles.recyclingLabel}>
-                    botellas
-                  </Text>
+                  <Text style={recyclingCardStyles.recyclingLabel}>kg</Text>
                 </>
               ) : (
                 <Text
@@ -41,15 +41,15 @@ export const RecyclingCard: React.FC<RecyclingCardProps> = ({
                     { width: "100%", flexShrink: 1 },
                   ]}
                 >
-                  Aún no has reciclado botellas. {"\n"}¡Comienza a reciclar y
-                  verás tu progreso aquí!
+                  Aún no has reciclado. {"\n"}¡Comienza a reciclar y verás tu
+                  progreso aquí!
                 </Text>
               )}
             </View>
           </View>
         </View>
         <View style={recyclingCardStyles.treesIconContainer}>
-          <TreesIcon width={80} height={64} />
+          <WaterIcon width={80} height={64} color="#3B82F6" />
         </View>
       </View>
     </Card>

@@ -46,7 +46,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
           </View>
         </View>
 
-        <View style={styles.features}>
+        {/* <View style={styles.features}>
           <View style={styles.feature}>
             <TreesIcon width={40} height={40} />
             <Text style={styles.featureTitle}>Recicla</Text>
@@ -70,7 +70,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
               Canjea por productos y descuentos
             </Text>
           </View>
-        </View>
+        </View> */}
       </View>
     </View>
   );
