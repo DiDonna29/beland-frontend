@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { StackScreenProps } from "@react-navigation/stack";
 import { GroupsStackParamList } from "../../types/navigation";
 import { WaveBottomGray } from "../../components/icons";
+import { AppHeader } from "../../components/layout/AppHeader";
 
 // Hooks
 import {
@@ -55,6 +56,7 @@ export const GroupsScreen: React.FC<any> = (props) => {
 
   return (
     <SafeAreaView style={containerStyles.container} edges={[]}>
+      <AppHeader />
       <ScrollView style={containerStyles.scrollView}>
         <View style={containerStyles.content}>
           {/* Header con título y botón crear */}

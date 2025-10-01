@@ -36,10 +36,21 @@ export const useAuthTokenStore = create<AuthTokenState>((set) => ({
   },
   setUser: (user: AuthUser | null) => {
     set({ user });
-    if (isWeb) localStorage.setItem("auth_user", JSON.stringify(user));
+    try {
+      if (isWeb) localStorage.setItem("auth_user", JSON.stringify(user));
+    } catch (e) {
+      console.warn("[useAuthTokenStore] error saving auth_user to storage:", e);
+    }
   },
   clearUser: () => {
     set({ user: null });
-    if (isWeb) localStorage.removeItem("auth_user");
+    try {
+      if (isWeb) localStorage.removeItem("auth_user");
+    } catch (e) {
+      console.warn(
+        "[useAuthTokenStore] error removing auth_user from storage:",
+        e
+      );
+    }
   },
 }));

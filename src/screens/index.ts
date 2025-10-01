@@ -1,4 +1,4 @@
-export { DashboardScreen } from "./DashboardScreen";
+export { DashboardScreen } from "./HomeScreen";
 export { WalletScreen } from "./WalletScreen";
 export { CommunityScreen } from "./Community";
 export { HistoryScreen } from "./HistoryScreen";

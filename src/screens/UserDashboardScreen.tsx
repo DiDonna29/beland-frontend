@@ -1,6 +1,6 @@
 // src/pages/DashboardPage.tsx
 import React from "react";
-import UserDashboard from "./Dashboard/UserDashboard";
+import UserDashboard from "./DashboardUser/UserDashboard";
 
 const DashboardPage: React.FC = () => {
   return (
