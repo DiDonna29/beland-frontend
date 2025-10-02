@@ -21,11 +21,10 @@ import { WalletBalanceCard } from "./components/WalletBalanceCard";
 import { beCoinsService } from "../../services/becoinsService";
 import { transactionService } from "../../services/transactionService";
 
-// Solo permitir canje de BECOINS a USD o ARS
+// Solo permitir canje de BECOINS a USD
 const digitalCurrencies = [
   { label: "BECOINS", value: "becoin" },
   { label: "Dólar estadounidense (USD)", value: "usd" },
-  { label: "Peso argentino (ARS)", value: "ars" },
 ];
 
 const CanjearScreen: React.FC<{
@@ -35,10 +34,13 @@ const CanjearScreen: React.FC<{
 }> = ({ navigation, route, balance: propBalance }) => {
   const { user } = useAuth();
   const [amount, setAmount] = useState("");
-  const [currency, setCurrency] = useState(digitalCurrencies[1].value); // USD por defecto
+  const [currency, setCurrency] = useState("usd"); // USD por defecto
   const [fromCurrency, setFromCurrency] = useState("becoin");
   const [showCurrencyModal, setShowCurrencyModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedWithdrawMethod, setSelectedWithdrawMethod] = useState<
+    "payphone" | "bank" | null
+  >(null);
   const balance =
     useBeCoinsStore((state: { balance: number }) => state.balance) ?? 0;
   const spendBeCoins = useBeCoinsStore((state: any) => state.spendBeCoins);
@@ -56,6 +58,22 @@ const CanjearScreen: React.FC<{
 
   const parsedAmount = parseFloat(amount) || 0;
   const isAmountValid = parsedAmount > 0 && parsedAmount <= balance;
+  const canContinue = isAmountValid && selectedWithdrawMethod;
+
+  const withdrawMethods = [
+    {
+      id: "payphone",
+      title: "Cuenta de Payphone",
+      icon: "💳",
+      available: true,
+    },
+    {
+      id: "bank",
+      title: "Cuenta Bancaria",
+      icon: "🏦",
+      available: true,
+    },
+  ];
 
   const handleBuy = async () => {
     if (!isAmountValid) {
@@ -66,147 +84,74 @@ const CanjearScreen: React.FC<{
       return;
     }
 
+    if (!selectedWithdrawMethod) {
+      Alert.alert(
+        "Selecciona un método",
+        "Por favor selecciona dónde quieres recibir tu dinero."
+      );
+      return;
+    }
+
     if (!user?.id) {
       Alert.alert("Error", "Usuario no autenticado");
       return;
     }
 
-    setIsLoading(true);
-
-    try {
-      // Determinar si usar modo demo o producción
-      const isDemoMode = process.env.EXPO_PUBLIC_USE_DEMO_MODE === "true";
-
-      console.log("🔧 CanjearScreen configuración:");
-      console.log(
-        "- process.env.EXPO_PUBLIC_USE_DEMO_MODE:",
-        process.env.EXPO_PUBLIC_USE_DEMO_MODE
-      );
-      console.log(
-        "- process.env.EXPO_PUBLIC_API_URL:",
-        process.env.EXPO_PUBLIC_API_URL
-      );
-      console.log("- isDemoMode:", isDemoMode);
-      console.log("- user.email:", user.email);
-      console.log("- beCoinsService:", !!beCoinsService);
-
-      if (!isDemoMode) {
-        try {
-          // Modo producción: intentar usar API real
-          await beCoinsService.spendBeCoins({
-            userId: user.email!,
-            amount: parsedAmount,
-            description: `Conversión de BECOINS a ${currency.toUpperCase()}`,
-            category: "conversion",
-            metadata: {
-              targetCurrency: currency.toUpperCase(),
-              conversionRate: convertBeCoinsToUSD(1),
-              targetAmount: convertBeCoinsToUSD(parsedAmount),
-            },
-          }); // Actualizar store local también
-          spendBeCoins(
-            parsedAmount,
-            `Canje de BECOINS a ${currency === "usd" ? "USD" : "ARS"}`,
-            "conversion"
-          );
-        } catch (apiError: any) {
-          console.warn("API no disponible, usando modo demo:", apiError);
-
-          // Si hay error de red, usar modo demo como fallback
-          const ok = spendBeCoins(
-            parsedAmount,
-            `Canje de BECOINS a ${currency === "usd" ? "USD" : "ARS"}`,
-            "conversion"
-          );
-
-          if (!ok) {
-            Alert.alert(
-              "Error",
-              "No se pudo realizar el canje. Verifica tu saldo."
-            );
-            return;
-          }
-        }
-      } else {
-        // Modo demo: usar store local
-        const ok = spendBeCoins(
-          parsedAmount,
-          `Canje de BECOINS a ${currency === "usd" ? "USD" : "ARS"}`,
-          "conversion"
-        );
-
-        if (!ok) {
-          Alert.alert(
-            "Error",
-            "No se pudo realizar el canje. Verifica tu saldo."
-          );
-          return;
-        }
-      }
-
-      // Mostrar modal de éxito visual
-      const now = new Date();
-      setSuccessData({
-        amount: parsedAmount,
-        currency: currency.toUpperCase(),
-        usdValue: `${formatUSDPrice(
-          convertBeCoinsToUSD(parsedAmount)
-        )} ${currency.toUpperCase()}`,
-        opNumber: Math.floor(
-          Math.random() * 900000000000 + 100000000000
-        ).toString(),
-        date: `${now.getDate().toString().padStart(2, "0")}/${(
-          now.getMonth() + 1
-        )
-          .toString()
-          .padStart(2, "0")}/${now.getFullYear()} a las ${now
-          .getHours()
-          .toString()
-          .padStart(2, "0")}:${now
-          .getMinutes()
-          .toString()
-          .padStart(2, "0")} hs`,
-      });
-      setShowSuccess(true);
-      setAmount("");
-      // Actualizar el balance global después de canjear
-      if (typeof refetch === "function") {
-        await refetch();
-      }
-    } catch (error: any) {
-      console.error("Error en canje:", error);
-      Alert.alert(
-        "Error",
-        error.message || "No se pudo completar el canje. Intenta nuevamente."
-      );
-    } finally {
-      setIsLoading(false);
-    }
+    // Aquí iría la lógica para procesar el retiro según el método seleccionado
+    Alert.alert(
+      "Funcionalidad en desarrollo",
+      `Pronto podrás retirar ${formatUSDPrice(
+        convertBeCoinsToUSD(parsedAmount)
+      )} USD a tu ${
+        selectedWithdrawMethod === "payphone"
+          ? "cuenta de Payphone"
+          : "cuenta bancaria"
+      }`
+    );
   };
+
+  // Fuente estándar para toda la aplicación web
+  const webFont =
+    "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Open Sans', 'Helvetica Neue', sans-serif";
 
   if (Platform.OS === "web") {
     return (
-      <div className="redeem-web-main">
+      <div
+        style={{
+          minHeight: "100vh",
+          height: "100vh",
+          backgroundColor: "#F8FAFC",
+          overflowY: "auto",
+          overflowX: "hidden",
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
         <div
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 8,
-            padding: "20px 0 0 0",
-            marginBottom: 16,
+            gap: 12,
+            padding: "24px 24px 20px 24px",
+            marginBottom: 0,
+            background: "linear-gradient(135deg, #F97316 0%, #EA580C 100%)",
+            borderRadius: "0 0 24px 24px",
+            boxShadow: "0 4px 16px rgba(249, 115, 22, 0.2)",
+            flexShrink: 0,
           }}
         >
           <button
             style={{
-              background: "#FFF3E0",
+              background: "rgba(255,255,255,0.2)",
               border: "none",
               borderRadius: "50%",
-              width: 40,
-              height: 40,
+              width: 44,
+              height: 44,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               cursor: "pointer",
+              transition: "all 0.2s ease",
             }}
             onClick={() => {
               if (navigation && navigation.goBack) navigation.goBack();
@@ -214,227 +159,483 @@ const CanjearScreen: React.FC<{
             }}
             aria-label="Volver"
           >
-            <span style={{ fontSize: 22, color: "#F88D2A" }}>←</span>
+            <span
+              style={{
+                fontSize: 20,
+                color: "#FFFFFF",
+                fontWeight: "bold",
+                fontFamily: webFont,
+              }}
+            >
+              ←
+            </span>
           </button>
-          <span
-            style={{
-              fontWeight: 700,
-              fontSize: 18,
-              color: "#1E293B",
-            }}
-          >
-            Canjear BeCoins
-          </span>
-        </div>
-        {/* Tarjeta de saldo */}
-        <div className="redeem-web-balance-card">
-          {/* Botón volver atrás web */}
-
           <div
             style={{
               display: "flex",
               alignItems: "center",
-              justifyContent: "space-between",
+              gap: "8px",
             }}
           >
-            <div>
-              <span className="redeem-web-balance-label">
-                Tu saldo disponible
-              </span>
-              <div className="redeem-web-balance-amount">
-                {balance.toLocaleString()} BeCoins
-              </div>
-              <span className="redeem-web-balance-estimate">
-                ≈ ${formatUSDPrice(convertBeCoinsToUSD(balance))} USD
-              </span>
-            </div>
             <span
               style={{
-                background: "#FFF3E0",
-                borderRadius: "50%",
-                padding: 10,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
+                fontWeight: 700,
+                fontSize: 20,
+                color: "#FFFFFF",
+                letterSpacing: "0.5px",
+                fontFamily: webFont,
               }}
             >
-              {/* Icono wallet */}
-              <span
-                role="img"
-                aria-label="wallet"
-                style={{ fontSize: 28, color: "#F88D2A" }}
-              >
-                👛
-              </span>
+              Canjear BeCoins
             </span>
           </div>
         </div>
 
-        {/* Tarjeta de formulario */}
-        <div className="redeem-web-form-card">
-          <span className="redeem-web-section-title">
-            ¿Cuánto quieres canjear?
-          </span>
-          <span className="redeem-web-input-label">Monto en BeCoins</span>
-          <div className="redeem-web-input-row">
-            <input
-              className="redeem-web-amount-input"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="0"
-              type="number"
-              maxLength={8}
-            />
-            <span className="redeem-web-badge">BeCoins</span>
-          </div>
-          {/* Error */}
-          {!isAmountValid && amount !== "" && (
-            <div className="redeem-web-error">
-              <span role="img" aria-label="alert" style={{ fontSize: 16 }}>
-                ⚠️
-              </span>
-              Monto inválido o insuficiente
-            </div>
-          )}
-
-          {/* Conversión */}
-          <div className="redeem-web-conversion-info">
-            <span className="redeem-web-conversion-label">Recibirás</span>
-            <div className="redeem-web-conversion-row">
-              <span className="redeem-web-conversion-amount">
-                {amount && isAmountValid
-                  ? formatUSDPrice(convertBeCoinsToUSD(Number(amount)))
-                  : "0.00"}
-              </span>
-              <span className="redeem-web-conversion-currency">
-                {currency === "usd" ? "USD" : "ARS"}
-              </span>
-              <button
-                style={{
-                  background: "#FFF3E0",
-                  border: "none",
-                  borderRadius: 8,
-                  padding: "4px 12px",
-                  color: "#F88D2A",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                }}
-                onClick={() => setShowCurrencyModal(true)}
-              >
-                ▼
-              </button>
-            </div>
-            <span className="redeem-web-conversion-note">
-              Conversión aproximada • Tasa: 1 BeCoin = ${convertBeCoinsToUSD(1)}{" "}
-              USD
-            </span>
-          </div>
-
-          {showCurrencyModal && (
+        {/* Contenedor principal con scroll */}
+        <div
+          style={{
+            maxWidth: "640px",
+            width: "100%",
+            margin: "0 auto",
+            padding: "0 24px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "20px",
+            paddingBottom: "40px",
+            flex: 1,
+            overflowY: "auto",
+            overflowX: "hidden",
+            paddingTop: "20px",
+          }}
+        >
+          {/* Tarjeta de saldo */}
+          <div
+            style={{
+              background: "#FFFFFF",
+              borderRadius: "20px",
+              padding: "24px",
+              boxShadow: "0 8px 32px rgba(0, 0, 0, 0.08)",
+              border: "1px solid #F1F5F9",
+            }}
+          >
             <div
-              className="redeem-web-modal-overlay"
               style={{
-                position: "fixed",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                background: "rgba(0,0,0,0.3)",
                 display: "flex",
                 alignItems: "center",
-                justifyContent: "center",
-                zIndex: 9999,
+                justifyContent: "space-between",
               }}
             >
-              <div
-                className="redeem-web-modal-content"
+              <div>
+                <span
+                  style={{
+                    fontSize: "14px",
+                    color: "#64748B",
+                    fontWeight: "500",
+                    marginBottom: "8px",
+                    display: "block",
+                    fontFamily: webFont,
+                  }}
+                >
+                  Tu saldo disponible
+                </span>
+                <div
+                  style={{
+                    fontSize: "28px",
+                    fontWeight: "700",
+                    color: "#1E293B",
+                    marginBottom: "4px",
+                    fontFamily: webFont,
+                  }}
+                >
+                  {balance.toLocaleString()} BeCoins
+                </div>
+                <span
+                  style={{
+                    fontSize: "14px",
+                    color: "#64748B",
+                    fontWeight: "500",
+                    fontFamily: webFont,
+                  }}
+                >
+                  ≈ ${formatUSDPrice(convertBeCoinsToUSD(balance))} USD
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Contenedor con scroll para el resto del contenido */}
+          <div
+            style={{
+              maxWidth: "800px",
+              margin: "0 auto",
+              padding: "0 20px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "20px",
+              height: "calc(100vh - 120px)",
+              overflowY: "auto",
+            }}
+          >
+            {/* Tarjeta de formulario */}
+            <div
+              style={{
+                background: "#FFFFFF",
+                borderRadius: "20px",
+                padding: "24px",
+                boxShadow: "0 8px 32px rgba(0, 0, 0, 0.08)",
+                border: "1px solid #F1F5F9",
+                marginBottom: "20px",
+              }}
+            >
+              <span
                 style={{
-                  background: "#fff",
-                  borderRadius: 16,
-                  padding: 24,
-                  minWidth: 280,
-                  boxShadow: "0 4px 24px rgba(0,0,0,0.12)",
+                  fontSize: "18px",
+                  fontWeight: "700",
+                  color: "#1E293B",
+                  marginBottom: "20px",
+                  display: "block",
+                  fontFamily: webFont,
+                }}
+              >
+                ¿Cuánto quieres canjear?
+              </span>
+              <span
+                style={{
+                  fontSize: "14px",
+                  fontWeight: "500",
+                  color: "#64748B",
+                  marginBottom: "8px",
+                  display: "block",
+                  fontFamily: webFont,
+                }}
+              >
+                Monto en BeCoins
+              </span>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px",
+                  marginBottom: "16px",
+                }}
+              >
+                <input
+                  style={{
+                    flex: 1,
+                    padding: "16px",
+                    border: "2px solid #E5E7EB",
+                    borderRadius: "12px",
+                    fontSize: "16px",
+                    fontWeight: "600",
+                    backgroundColor: "#FAFAFA",
+                    color: "#1E293B",
+                    outline: "none",
+                    transition: "all 0.2s ease",
+                    fontFamily: webFont,
+                  }}
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder="0"
+                  type="number"
+                  maxLength={8}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = "#F97316";
+                    e.target.style.backgroundColor = "#FFFFFF";
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = "#E5E7EB";
+                    e.target.style.backgroundColor = "#FAFAFA";
+                  }}
+                />
+                <span
+                  style={{
+                    padding: "8px 16px",
+                    backgroundColor: "#FFF7ED",
+                    border: "2px solid #FFEDD5",
+                    borderRadius: "8px",
+                    fontSize: "14px",
+                    fontWeight: "600",
+                    color: "#F97316",
+                    fontFamily: webFont,
+                  }}
+                >
+                  BeCoins
+                </span>
+              </div>
+              {/* Error */}
+              {!isAmountValid && amount !== "" && (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    padding: "12px 16px",
+                    backgroundColor: "#FEF2F2",
+                    border: "1px solid #FECACA",
+                    borderRadius: "8px",
+                    marginBottom: "16px",
+                  }}
+                >
+                  <span role="img" aria-label="alert" style={{ fontSize: 16 }}>
+                    ⚠️
+                  </span>
+                  <span
+                    style={{
+                      fontSize: "14px",
+                      color: "#DC2626",
+                      fontWeight: "500",
+                      fontFamily: webFont,
+                    }}
+                  >
+                    Monto inválido o insuficiente
+                  </span>
+                </div>
+              )}
+
+              {/* Conversión */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "20px",
+                  backgroundColor: "#F0FDF4",
+                  borderRadius: "16px",
+                  border: "2px solid #BBF7D0",
+                  marginBottom: "20px",
                 }}
               >
                 <div
-                  className="redeem-web-modal-header"
                   style={{
                     display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginBottom: 16,
+                    flexDirection: "column",
                   }}
                 >
-                  <span style={{ fontWeight: 700, fontSize: 18 }}>
-                    Seleccionar moneda
+                  <span
+                    style={{
+                      fontSize: "14px",
+                      color: "#065F46",
+                      fontWeight: "500",
+                      fontFamily: webFont,
+                      marginBottom: "4px",
+                    }}
+                  >
+                    Recibirás
                   </span>
-                  <button
-                    style={{
-                      background: "none",
-                      border: "none",
-                      fontSize: 22,
-                      cursor: "pointer",
-                    }}
-                    onClick={() => setShowCurrencyModal(false)}
-                  >
-                    ✕
-                  </button>
-                </div>
-                {digitalCurrencies.slice(1).map((item) => (
                   <div
-                    key={item.value}
-                    className={`redeem-web-modal-option${
-                      currency === item.value ? " selected" : ""
-                    }`}
                     style={{
-                      padding: "12px 0",
-                      cursor: "pointer",
-                      fontWeight: currency === item.value ? 700 : 500,
-                      color: currency === item.value ? "#F88D2A" : "#1E293B",
-                      borderBottom: "1px solid #F3F4F6",
-                    }}
-                    onClick={() => {
-                      setCurrency(item.value);
-                      setShowCurrencyModal(false);
+                      display: "flex",
+                      alignItems: "baseline",
+                      gap: "6px",
                     }}
                   >
-                    {item.label}
+                    <span
+                      style={{
+                        fontSize: "28px",
+                        fontWeight: "800",
+                        color: "#059669",
+                        fontFamily: webFont,
+                        lineHeight: "1",
+                      }}
+                    >
+                      $
+                      {amount && isAmountValid
+                        ? formatUSDPrice(convertBeCoinsToUSD(Number(amount)))
+                        : "0.00"}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: "16px",
+                        fontWeight: "600",
+                        color: "#065F46",
+                        fontFamily: webFont,
+                      }}
+                    >
+                      USD
+                    </span>
+                  </div>
+                </div>
+                <div
+                  style={{
+                    backgroundColor: "#059669",
+                    borderRadius: "50%",
+                    padding: "12px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <span style={{ fontSize: "24px", color: "#FFFFFF" }}>💰</span>
+                </div>
+              </div>
+              <div
+                style={{
+                  textAlign: "center",
+                  marginBottom: "20px",
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: "12px",
+                    color: "#64748B",
+                    fontWeight: "400",
+                    fontFamily: webFont,
+                  }}
+                >
+                  Conversión aproximada • Tasa: 1 BeCoin = $
+                  {convertBeCoinsToUSD(1)} USD
+                </span>
+              </div>
+              {/* Selección de método de retiro */}
+              <div
+                style={{
+                  background: "#FFFFFF",
+                  borderRadius: "20px",
+                  padding: "24px",
+                  boxShadow: "0 8px 32px rgba(0, 0, 0, 0.08)",
+                  border: "1px solid #F1F5F9",
+                  marginTop: "16px",
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: "18px",
+                    fontWeight: "700",
+                    color: "#1E293B",
+                    marginBottom: "20px",
+                    display: "block",
+                    fontFamily: webFont,
+                  }}
+                >
+                  ¿Dónde querés recibir tu dinero?
+                </span>
+
+                {withdrawMethods.map((method) => (
+                  <div
+                    key={method.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      padding: "16px",
+                      borderRadius: "12px",
+                      border: `2px solid ${
+                        selectedWithdrawMethod === method.id
+                          ? "#F97316"
+                          : "#E5E7EB"
+                      }`,
+                      backgroundColor:
+                        selectedWithdrawMethod === method.id
+                          ? "#FFF7ED"
+                          : "#FAFAFA",
+                      marginBottom: "12px",
+                      cursor: "pointer",
+                      transition: "all 0.2s ease",
+                    }}
+                    onClick={() =>
+                      setSelectedWithdrawMethod(
+                        method.id as "payphone" | "bank"
+                      )
+                    }
+                  >
+                    <span
+                      style={{
+                        fontSize: 20,
+                        marginRight: 16,
+                        backgroundColor: "#F97316",
+                        borderRadius: "50%",
+                        width: 40,
+                        height: 40,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      {method.icon}
+                    </span>
+                    <span
+                      style={{
+                        flex: 1,
+                        fontSize: 16,
+                        fontWeight: 600,
+                        color:
+                          selectedWithdrawMethod === method.id
+                            ? "#F97316"
+                            : "#374151",
+                        fontFamily: webFont,
+                      }}
+                    >
+                      {method.title}
+                    </span>
+                    <div
+                      style={{
+                        width: 20,
+                        height: 20,
+                        borderRadius: "50%",
+                        border: `2px solid ${
+                          selectedWithdrawMethod === method.id
+                            ? "#F97316"
+                            : "#D1D5DB"
+                        }`,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      {selectedWithdrawMethod === method.id && (
+                        <div
+                          style={{
+                            width: 10,
+                            height: 10,
+                            borderRadius: "50%",
+                            backgroundColor: "#F97316",
+                          }}
+                        />
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
-            </div>
-          )}
-          {/* Botón de canje */}
-          <button
-            className={`redeem-web-btn${
-              !isAmountValid || isLoading ? " disabled" : ""
-            }`}
-            onClick={handleBuy}
-            disabled={!isAmountValid || isLoading}
-          >
-            {isLoading ? "Procesando..." : "Canjear BeCoins"}
-          </button>
-        </div>
 
-        {/* Información adicional */}
-        <div className="redeem-web-info-card">
-          <div className="redeem-web-info-title">
-            <span
-              role="img"
-              aria-label="info"
-              style={{ fontSize: 20, color: "#6B7280" }}
-            >
-              ℹ️
-            </span>
-            Información del canje
-          </div>
-          <div className="redeem-web-info-text">
-            • El canje se realiza al tipo de cambio actual
-            <br />
-            • Los fondos estarán disponibles inmediatamente
-            <br />
-            • No se aplican comisiones adicionales
-            <br />• Monto mínimo: 1 BeCoin
+              {/* Botón de canje */}
+              <button
+                style={{
+                  width: "100%",
+                  padding: "16px",
+                  backgroundColor:
+                    !canContinue || isLoading ? "#D1D5DB" : "#F97316",
+                  color: "#FFFFFF",
+                  border: "none",
+                  borderRadius: "12px",
+                  fontSize: "16px",
+                  fontWeight: "700",
+                  cursor: !canContinue || isLoading ? "not-allowed" : "pointer",
+                  transition: "all 0.2s ease",
+                  marginTop: "20px",
+                  marginBottom: "20px",
+                  fontFamily: webFont,
+                  boxShadow:
+                    !canContinue || isLoading
+                      ? "none"
+                      : "0 4px 16px rgba(249, 115, 22, 0.3)",
+                }}
+                onClick={handleBuy}
+                disabled={!canContinue || isLoading}
+                onMouseEnter={(e) => {
+                  if (!(!canContinue || isLoading)) {
+                    e.currentTarget.style.backgroundColor = "#EA580C";
+                    e.currentTarget.style.transform = "translateY(-1px)";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!(!canContinue || isLoading)) {
+                    e.currentTarget.style.backgroundColor = "#F97316";
+                    e.currentTarget.style.transform = "translateY(0)";
+                  }
+                }}
+              >
+                {isLoading ? "Procesando..." : "Retirar dinero"}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -472,7 +673,7 @@ const CanjearScreen: React.FC<{
               </Text>
             </View>
             <View style={styles.balanceIcon}>
-              <MaterialCommunityIcons name="wallet" size={32} color="#F88D2A" />
+              <MaterialCommunityIcons name="wallet" size={32} color="#F97316" />
             </View>
           </View>
         </View>
@@ -517,46 +718,72 @@ const CanjearScreen: React.FC<{
               )}
             </View>
 
-            {/* Conversión */}
-            <View style={styles.conversionSection}>
-              <View style={styles.conversionHeader}>
-                <Text style={styles.inputLabel}>Recibirás</Text>
-                <TouchableOpacity
-                  style={styles.currencySelector}
-                  onPress={() => setShowCurrencyModal(true)}
-                >
-                  <Text style={styles.currencySelectorText}>
-                    {currency === "usd" ? "USD" : "ARS"}
-                  </Text>
-                  <Ionicons name="chevron-down" size={16} color="#F88D2A" />
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.conversionResult}>
-                <Text style={styles.conversionAmount}>
+            {/* Sección Recibirás */}
+            <View style={styles.receiveSection}>
+              <Text style={styles.inputLabel}>Recibirás</Text>
+              <View style={styles.receiveResult}>
+                <Text style={styles.receiveAmount}>
                   {amount && isAmountValid
                     ? `${formatUSDPrice(convertBeCoinsToUSD(Number(amount)))}`
                     : "0.00"}
                 </Text>
-                <Text style={styles.conversionCurrency}>
-                  {currency === "usd" ? "USD" : "ARS"}
-                </Text>
+                <Text style={styles.receiveCurrency}>USD</Text>
               </View>
-
-              <Text style={styles.conversionNote}>
-                Conversión aproximada • Tasa: 1 BeCoin = $
-                {convertBeCoinsToUSD(1)} USD
-              </Text>
             </View>
 
-            {/* Botón de canje */}
+            {/* Selección de método de retiro */}
+            <View style={styles.withdrawMethodSection}>
+              <Text style={styles.inputLabel}>
+                ¿Dónde querés recibir tu dinero?
+              </Text>
+
+              {withdrawMethods.map((method) => (
+                <TouchableOpacity
+                  key={method.id}
+                  style={[
+                    styles.methodOption,
+                    selectedWithdrawMethod === method.id &&
+                      styles.methodOptionSelected,
+                  ]}
+                  onPress={() =>
+                    setSelectedWithdrawMethod(method.id as "payphone" | "bank")
+                  }
+                >
+                  <View style={styles.methodIcon}>
+                    <Text style={styles.methodIconText}>{method.icon}</Text>
+                  </View>
+                  <Text
+                    style={[
+                      styles.methodTitle,
+                      selectedWithdrawMethod === method.id &&
+                        styles.methodTitleSelected,
+                    ]}
+                  >
+                    {method.title}
+                  </Text>
+                  <View
+                    style={[
+                      styles.methodRadio,
+                      selectedWithdrawMethod === method.id &&
+                        styles.methodRadioSelected,
+                    ]}
+                  >
+                    {selectedWithdrawMethod === method.id && (
+                      <View style={styles.methodRadioInner} />
+                    )}
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Botón de retiro */}
             <TouchableOpacity
               style={[
                 styles.exchangeButton,
-                (!isAmountValid || isLoading) && styles.exchangeButtonDisabled,
+                (!canContinue || isLoading) && styles.exchangeButtonDisabled,
               ]}
               onPress={handleBuy}
-              disabled={!isAmountValid || isLoading}
+              disabled={!canContinue || isLoading}
             >
               {isLoading ? (
                 <View style={styles.loadingContainer}>
@@ -568,7 +795,7 @@ const CanjearScreen: React.FC<{
                   <Text style={styles.exchangeButtonText}>Procesando...</Text>
                 </View>
               ) : (
-                <Text style={styles.exchangeButtonText}>Canjear BeCoins</Text>
+                <Text style={styles.exchangeButtonText}>Retirar dinero</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -593,64 +820,6 @@ const CanjearScreen: React.FC<{
           </View>
         </View>
       </ScrollView>
-
-      {/* Modal de selección de moneda */}
-      <Modal
-        visible={showCurrencyModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowCurrencyModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Seleccionar moneda</Text>
-              <TouchableOpacity
-                onPress={() => setShowCurrencyModal(false)}
-                style={styles.modalCloseButton}
-              >
-                <Ionicons name="close" size={24} color="#6B7280" />
-              </TouchableOpacity>
-            </View>
-
-            {digitalCurrencies.slice(1).map((item) => (
-              <TouchableOpacity
-                key={item.value}
-                style={[
-                  styles.currencyOption,
-                  currency === item.value && styles.currencyOptionSelected,
-                ]}
-                onPress={() => {
-                  setCurrency(item.value);
-                  setShowCurrencyModal(false);
-                }}
-              >
-                <View style={styles.currencyOptionContent}>
-                  <Text
-                    style={[
-                      styles.currencyOptionText,
-                      currency === item.value &&
-                        styles.currencyOptionTextSelected,
-                    ]}
-                  >
-                    {item.label}
-                  </Text>
-                  <Text style={styles.currencyOptionCode}>
-                    {item.value.toUpperCase()}
-                  </Text>
-                </View>
-                {currency === item.value && (
-                  <MaterialCommunityIcons
-                    name="check-circle"
-                    size={20}
-                    color="#F88D2A"
-                  />
-                )}
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-      </Modal>
 
       {/* Modal de éxito */}
       {showSuccess && successData && (
@@ -719,10 +888,10 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === "android" ? 16 : 60,
     paddingBottom: 20,
     paddingHorizontal: 20,
-    backgroundColor: "#F88D2A",
+    backgroundColor: "#F97316",
     borderBottomLeftRadius: 0,
     borderBottomRightRadius: 0,
-    shadowColor: "#F88D2A",
+    shadowColor: "#F97316",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
@@ -862,7 +1031,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFF7ED",
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: "#F88D2A",
+    borderColor: "#F97316",
     alignItems: "center",
     justifyContent: "center",
     minWidth: 100,
@@ -870,7 +1039,7 @@ const styles = StyleSheet.create({
   currencyBadgeText: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#F88D2A",
+    color: "#F97316",
   },
 
   // Error container
@@ -884,6 +1053,87 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#EF4444",
     fontWeight: "500",
+  },
+
+  // Receive section
+  receiveSection: {
+    marginBottom: 24,
+  },
+  receiveResult: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    justifyContent: "center",
+    marginBottom: 8,
+    gap: 8,
+  },
+  receiveAmount: {
+    fontSize: 32,
+    fontWeight: "700",
+    color: "#F97316",
+  },
+  receiveCurrency: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#64748B",
+  },
+
+  // Withdraw method section
+  withdrawMethodSection: {
+    marginBottom: 24,
+  },
+  methodOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "#E5E7EB",
+    marginBottom: 12,
+    backgroundColor: "#FAFAFA",
+  },
+  methodOptionSelected: {
+    borderColor: "#F97316",
+    backgroundColor: "#FFF7ED",
+  },
+  methodIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#F97316",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 16,
+  },
+  methodIconText: {
+    fontSize: 20,
+  },
+  methodTitle: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#374151",
+  },
+  methodTitleSelected: {
+    color: "#F97316",
+  },
+  methodRadio: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: "#D1D5DB",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  methodRadioSelected: {
+    borderColor: "#F97316",
+  },
+  methodRadioInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "#F97316",
   },
 
   // Conversion section
@@ -937,11 +1187,11 @@ const styles = StyleSheet.create({
   // Exchange button
   exchangeButton: {
     height: 56,
-    backgroundColor: "#F88D2A",
+    backgroundColor: "#F97316",
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#F88D2A",
+    shadowColor: "#F97316",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

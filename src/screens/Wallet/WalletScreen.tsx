@@ -15,6 +15,7 @@ import {
   WalletBalanceCard,
   WalletActions,
   RecentTransactions,
+  PaymentPreferences,
 } from "./components";
 import { useAuth } from "../../hooks/AuthContext";
 
@@ -22,6 +23,7 @@ import {
   useWalletData,
   useWalletActions,
   useWalletTransactions,
+  usePaymentPreferences,
 } from "./hooks";
 import { containerStyles } from "./styles";
 
@@ -35,6 +37,13 @@ export const WalletScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     isLoading: transactionsLoading,
     refetch: refetchTransactions,
   } = useWalletTransactions();
+
+  const {
+    data: paymentPreferences,
+    addPaymentMethod,
+    deletePaymentMethod,
+    setDefaultPaymentMethod,
+  } = usePaymentPreferences();
 
   // Actualizar transacciones al volver a la pantalla
   const nav = useNavigation();
@@ -104,6 +113,13 @@ export const WalletScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             <WalletBalanceCard
               walletData={walletData}
               avatarUrl={user?.picture}
+            />
+            {/* Preferencias de pago */}
+            <PaymentPreferences
+              methods={paymentPreferences.methods}
+              onAddMethod={addPaymentMethod}
+              onDeleteMethod={deletePaymentMethod}
+              onSetDefault={setDefaultPaymentMethod}
             />
             <WalletActions actions={mainWalletActions} />
 

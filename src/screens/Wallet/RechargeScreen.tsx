@@ -15,7 +15,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 // Montos predefinidos
 const PRESET_AMOUNTS = [10, 25, 50, 100, 200, 500];
 const PAYMENT_METHODS = [
-  { id: "PAYPHONE", name: "Payphone", icon: "cellphone" },
+  { id: "PAYPHONE", name: "Tarjeta", icon: "cellphone" },
   { id: "BANK_TRANSFER", name: "Transferencia Bancaria", icon: "bank" },
 ];
 
@@ -395,7 +395,7 @@ export default function RechargeScreen() {
                   }}
                   disabled={!amount}
                 >
-                  Pagar con Payphone
+                  Pagar con Tarjeta
                 </button>
               )}
             </>

@@ -54,7 +54,7 @@ export const FeatureCard: React.FC<FeatureCardProps> = ({
       case "delivery":
         return {
           icon: <DeliveryIcon width={48} height={48} color="#0F766E" />,
-          title: "Compra y reclicla desde tu casa",
+          title: "Delivery Circular",
           subtitle: "Explora, compra y recibe a domicilio",
           description:
             "Entréganos tus residuos, apoya a recicladores y gana monedas por cuidar el planeta.",
