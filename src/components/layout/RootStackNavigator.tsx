@@ -2,6 +2,7 @@ import React from "react";
 import { createStackNavigator } from "@react-navigation/stack";
 import { MainTabNavigator } from "./MainTabNavigator";
 import CanjearScreen from "../../screens/Wallet/CanjearScreen";
+import WithdrawMethodScreen from "../../screens/Wallet/WithdrawMethodScreen";
 import { ReceiveScreen, CobrarScreen } from "src/screens/Wallet";
 import SendScreen from "../../screens/Wallet/SendScreen";
 import WalletHistoryScreen from "../../screens/Wallet/WalletHistoryScreen";
@@ -29,6 +30,10 @@ export type RootStackParamList = {
   QR: { pendingRedemption?: any } | undefined;
   RecyclingMap: undefined;
   CanjearScreen: undefined;
+  WithdrawMethodScreen: {
+    beCoinsAmount: number;
+    usdAmount: number;
+  };
   SendScreen: undefined;
   ReceiveScreen: undefined;
   HistoryScreen: undefined;
@@ -68,6 +73,11 @@ export const RootStackNavigator = () => {
     >
       <Stack.Screen name="MainTabs" component={MainTabNavigator} />
       <Stack.Screen name="CanjearScreen" component={CanjearScreen} />
+      <Stack.Screen
+        name="WithdrawMethodScreen"
+        component={WithdrawMethodScreen}
+        options={{ headerShown: false }}
+      />
       <Stack.Screen name="SendScreen" component={SendScreen} />
       <Stack.Screen
         name="WalletHistoryScreen"

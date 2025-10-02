@@ -14,13 +14,7 @@ export const WalletActions: React.FC<WalletActionsProps> = ({ actions }) => {
     useCustomAlert();
 
   const handlePress = (action: WalletAction) => {
-    if (action.id === "exchange") {
-      showCustomAlert(
-        "Funcionalidad en progreso",
-        "Esta funcionalidad estará disponible próximamente.",
-        "info"
-      );
-    } else if (action.onPress) {
+    if (action.onPress) {
       action.onPress();
     }
   };

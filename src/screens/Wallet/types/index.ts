@@ -39,3 +39,5 @@ export interface FRSData {
   rate: string;
   details: string;
 }
+
+export * from "./paymentMethods";

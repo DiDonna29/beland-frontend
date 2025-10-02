@@ -6,6 +6,7 @@ export { default as ReceiveScreen } from "./ReceiveScreen";
 export { default as HistoryScreen } from "./WalletHistoryScreen";
 export { default as CanjearScreen } from "./CanjearScreen";
 export { default as CobrarScreen } from "./CobrarScreen";
+export { default as WithdrawMethodScreen } from "./WithdrawMethodScreen";
 export * from "./components";
 export * from "./hooks";
 export * from "./types";
