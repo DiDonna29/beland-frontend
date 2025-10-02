@@ -50,6 +50,10 @@ export const HomeScreen = () => {
     navigation.navigate("SendScreen" as never);
   };
 
+  const handleExchange = () => {
+    navigation.navigate("CanjearScreen" as never);
+  };
+
   const handleReceive = () => {
     navigation.navigate("ReceiveScreen" as never);
   };
@@ -96,6 +100,7 @@ export const HomeScreen = () => {
               onSend={handleSend}
               onReceive={handleReceive}
               onCollect={handleCollect}
+              onExchange={handleExchange}
             />
 
             <View style={dynamicStyles.featuresGrid}>
@@ -104,8 +109,9 @@ export const HomeScreen = () => {
                 data={{ bottlesRecycled: userStats?.bottlesRecycled ?? 0 }}
                 onPress={handleRecyclingMapPress}
               />
-              <FeatureCard type="community" onPress={handleCommunity} />
+
               <FeatureCard type="delivery" onPress={handleDelivery} />
+              <FeatureCard type="community" onPress={handleCommunity} />
             </View>
 
             <StatsCard

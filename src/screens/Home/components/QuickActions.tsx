@@ -112,13 +112,7 @@ export const QuickActions: React.FC<QuickActionsProps> = ({
   }
 
   const handlePress = (action: QuickAction) => {
-    if (action.id === "exchange") {
-      showCustomAlert(
-        "Funcionalidad en desarrollo",
-        "La función de canje estará disponible próximamente.",
-        "info"
-      );
-    } else if (action.onPress) {
+    if (action.onPress) {
       action.onPress();
     }
   };

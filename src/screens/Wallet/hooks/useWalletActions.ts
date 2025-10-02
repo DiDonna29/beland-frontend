@@ -68,15 +68,7 @@ export const useWalletActions = (
     label: "Canjear",
     icon: ExchangeIcon,
     backgroundColor: "#FFFFFF",
-    onPress: () => {
-      if (showCustomAlert) {
-        showCustomAlert(
-          "Funcionalidad en progreso",
-          "Esta funcionalidad estará disponible próximamente.",
-          "info"
-        );
-      }
-    },
+    onPress: () => navigation.navigate("CanjearScreen" as never),
   });
 
   // Acciones secundarias - sin historial ya que está integrado en la vista principal

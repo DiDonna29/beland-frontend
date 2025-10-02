@@ -28,3 +28,4 @@ export { RecyclingMarker } from "./RecyclingMarker";
 export { PhoneMapSVG } from "./PhoneMapSVG";
 export { RechargeIcon, SettingsIcon } from "./WalletIcons";
 export { CobrarIcon } from "./CobrarIcon";
+export { PaymentPreferencesIcon } from "./PaymentPreferencesIcon";
