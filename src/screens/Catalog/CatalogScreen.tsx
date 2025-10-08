@@ -902,6 +902,7 @@ export const CatalogScreen = () => {
                 size="medium"
                 variant="header"
                 style={containerStyles.coinsContainer}
+                showLockedBalance={true}
               />
               {isAuthenticated && (
                 <TouchableOpacity

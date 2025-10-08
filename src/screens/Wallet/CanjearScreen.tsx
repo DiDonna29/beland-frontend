@@ -48,6 +48,10 @@ const CanjearScreen: React.FC<{
 
   const balance =
     useBeCoinsStore((state: { balance: number }) => state.balance) ?? 0;
+  const lockedBalance =
+    useBeCoinsStore(
+      (state: { locked_balance: number }) => state.locked_balance
+    ) ?? 0;
   const spendBeCoins = useBeCoinsStore((state: any) => state.spendBeCoins);
   const { refetch } = useWalletData();
 
@@ -304,6 +308,14 @@ const CanjearScreen: React.FC<{
           <Text style={styles.balanceAmount}>
             {balance.toLocaleString()} BeCoins
           </Text>
+          {lockedBalance > 0 && (
+            <View style={styles.lockedBalanceContainer}>
+              <Text style={styles.lockedBalanceLabel}>Balance bloqueado</Text>
+              <Text style={styles.lockedBalanceAmount}>
+                {lockedBalance.toLocaleString()} BeCoins
+              </Text>
+            </View>
+          )}
           <Text style={styles.balanceUSD}>
             ≈ ${formatUSDPrice(convertBeCoinsToUSD(balance))} USD
           </Text>
@@ -641,6 +653,25 @@ const styles = StyleSheet.create({
   balanceUSD: {
     fontSize: 16,
     color: "#6B7280",
+  },
+  lockedBalanceContainer: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: "#E5E7EB",
+    alignItems: "center",
+    width: "100%",
+  },
+  lockedBalanceLabel: {
+    fontSize: 12,
+    color: "#9CA3AF",
+    marginBottom: 2,
+  },
+  lockedBalanceAmount: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#9CA3AF",
+    fontStyle: "italic",
   },
   inputSection: {
     margin: 16,
