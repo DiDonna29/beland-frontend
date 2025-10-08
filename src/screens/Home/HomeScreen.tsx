@@ -39,6 +39,7 @@ export const HomeScreen = () => {
 
   // Usar la constante centralizada para el cálculo de USD
   const balance = userStats?.coinsAmount ?? 0;
+  const lockedBalance = useBeCoinsStore((state) => state.locked_balance) ?? 0;
   const estimatedValue = getBeCoinsInUSD(balance);
 
   // Handlers para acciones rápidas
@@ -92,6 +93,7 @@ export const HomeScreen = () => {
           <View style={dynamicStyles.content}>
             <HeroSection
               balance={balance}
+              locked_balance={lockedBalance}
               estimatedValue={estimatedValue.toFixed(2)}
             />
 
@@ -135,6 +137,7 @@ export const HomeScreen = () => {
         <View style={styles.content}>
           <HeroSection
             balance={balance}
+            locked_balance={lockedBalance}
             estimatedValue={estimatedValue.toFixed(2)}
           />
 
