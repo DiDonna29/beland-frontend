@@ -41,10 +41,12 @@ export const HomeScreen = () => {
   const balance = userStats?.coinsAmount ?? 0;
   const lockedBalance = useBeCoinsStore((state) => state.locked_balance) ?? 0;
   const estimatedValue = getBeCoinsInUSD(balance);
-  
+
   // Solo pasar locked_balance si es mayor a 0
   const shouldShowLockedBalance = lockedBalance > 0;
-  const lockedBalanceToPass = shouldShowLockedBalance ? lockedBalance : undefined;
+  const lockedBalanceToPass = shouldShowLockedBalance
+    ? lockedBalance
+    : undefined;
 
   // Handlers para acciones rápidas
   const handleRecharge = () => {
